@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Greenhouse IoT Dashboard - Hệ thống giám sát nhà kính thông minh">
+    <title>Smart Greenhouse Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Connection Overlay -->
+<div id="connection-overlay" class="connection-overlay">
+    <div class="connection-box">
+        <div class="connection-spinner"></div>
+        <h2>🌿 Đang kết nối...</h2>
+        <p id="connection-hint">Kết nối đến Adafruit IO Broker</p>
+    </div>
+</div>
+
+<!-- Header -->
+<header id="main-header">
+    <div class="header-left">
+        <div class="logo">🌿</div>
+        <div>
+            <h1>Nhà Kính Thông Minh</h1>
+            <p class="subtitle">IoT Monitoring System</p>
+        </div>
+    </div>
+
+    <div class="header-center">
+        <div class="status-bar">
+            <span id="mqtt-status" class="status-dot offline">● Mất kết nối</span>
+            <span id="sim-clock" class="sim-clock">06:00</span> <!-- Thoi gian thuc -->
+            <span id="sim-day" style="font-size:0.72rem; color:var(--text-muted)">Ngày 1</span>
+            <span id="weather-display" class="weather-icon">☀️ Quang đãng</span>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <button id="btn-theme" class="btn-icon" title="Đổi giao diện">🌙</button>
+        <button id="btn-export" class="btn-icon" title="Xuất CSV">💾</button>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main>
+    <!-- Sensor Cards -->
+    <section class="sensor-grid">
+        <!-- Độ Ẩm Đất -->
+        <div class="sensor-card" id="card-moisture">
+            <h3>💧 Độ Ẩm Đất</h3>
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                    <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                    <circle class="gauge-fill" id="gauge-moisture" cx="60" cy="60" r="52" style="stroke: var(--color-moisture)" />
+                </svg>
+                <div class="gauge-value" id="val-moisture">--</div>
+                <div class="gauge-unit">%</div>
+            </div>
+            <div class="sensor-status" id="status-moisture">Đang chờ...</div>
+        </div>
+
+        <!-- Nhiệt Độ -->
+        <div class="sensor-card" id="card-temperature">
+            <h3>🌡️ Nhiệt Độ</h3>
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                    <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                    <circle class="gauge-fill" id="gauge-temperature" cx="60" cy="60" r="52" style="stroke: var(--color-temp)" />
+                </svg>
+                <div class="gauge-value" id="val-temperature">--</div>
+                <div class="gauge-unit">°C</div>
+            </div>
+            <div class="sensor-status" id="status-temperature">Đang chờ...</div>
+        </div>
+
+        <!-- Ánh Sáng -->
+        <div class="sensor-card" id="card-light">
+            <h3>☀️ Ánh Sáng</h3>
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                    <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                    <circle class="gauge-fill" id="gauge-light" cx="60" cy="60" r="52" style="stroke: var(--color-light)" />
+                </svg>
+                <div class="gauge-value" id="val-light">--</div>
+                <div class="gauge-unit">lux</div>
+            </div>
+            <div class="sensor-status" id="status-light">Đang chờ...</div>
+        </div>
+
+        <!-- Độ Ẩm Không Khí -->
+        <div class="sensor-card" id="card-humidity">
+            <h3>🌫️ Độ Ẩm KK</h3>
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                    <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                    <circle class="gauge-fill" id="gauge-humidity" cx="60" cy="60" r="52" style="stroke: var(--color-humidity)" />
+                </svg>
+                <div class="gauge-value" id="val-humidity">--</div>
+                <div class="gauge-unit">%</div>
+            </div>
+            <div class="sensor-status" id="status-humidity">Đang chờ...</div>
+        </div>
+
+        <!-- CO2 -->
+        <div class="sensor-card" id="card-co2">
+            <h3>🫧 CO₂</h3>
+            <div class="gauge-wrap">
+                <svg viewBox="0 0 120 120" class="gauge-svg">
+                    <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                    <circle class="gauge-fill" id="gauge-co2" cx="60" cy="60" r="52" style="stroke: var(--color-co2)" />
+                </svg>
+                <div class="gauge-value" id="val-co2">--</div>
+                <div class="gauge-unit">ppm</div>
+            </div>
+            <div class="sensor-status" id="status-co2">Đang chờ...</div>
+        </div>
+    </section>
+
+    <!-- Chart + Controls -->
+    <section class="main-panels">
+        <!-- Chart Panel -->
+        <div class="panel chart-panel">
+            <div class="panel-header">
+                <h2>📈 Biểu Đồ Xu Hướng</h2>
+                <div class="chart-tabs">
+                    <button class="tab active" data-chart="moisture">Độ ẩm</button>
+                    <button class="tab" data-chart="temperature">Nhiệt độ</button>
+                    <button class="tab" data-chart="light">Ánh sáng</button>
+                    <button class="tab" data-chart="humidity">Độ ẩm KK</button>
+                    <button class="tab" data-chart="co2">CO₂</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="sensor-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="panel control-panel">
+            <h2>⚙️ Điều Khiển Bơm</h2>
+
+            <div class="pump-display" id="pump-display">
+                <div class="pump-icon" id="pump-icon">💧</div>
+                <div class="pump-status" id="pump-status-text">TẮT</div>
+                <div class="water-waves" id="water-waves">
+                    <div class="wave wave1"></div>
+                </div>
+            </div>
+
+            <div class="control-row">
+                <button id="btn-pump" class="btn-pump off">BẬT BƠM</button>
+            </div>
+
+            <div class="control-row">
+                <div class="mode-switch">
+                    <button id="btn-auto" class="btn-mode active">AUTO</button>
+                    <button id="btn-manual" class="btn-mode">MANUAL</button>
+                </div>
+            </div>
+
+            <div class="control-row threshold-row">
+                <span>Ngưỡng tưới: <b id="threshold-value">30%</b></span>
+                <input type="range" id="threshold-slider" min="10" max="80" value="30" />
+            </div>
+
+            <!-- PID Section -->
+            <div class="pid-section">
+                <h4>📊 PID Controller</h4>
+                <div class="pid-bar-bg"><div class="pid-bar" id="pid-bar"></div></div>
+                <div class="pid-labels">
+                    <span>Output: <b id="pid-output">0%</b></span>
+                    <span>Setpoint: <b id="pid-setpoint">0%</b></span>
+                </div>
+            </div>
+
+            <!-- AI Section -->
+            <div class="ai-section">
+                <h4>🤖 Phân Tích AI</h4>
+                <div class="ai-status" id="ai-status">Đang phân tích...</div>
+                <div id="ai-recommendation" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom: Logs & Alerts -->
+    <section class="bottom-panels">
+        <!-- Watering Log -->
+        <div class="panel">
+            <h2>📋 Nhật Ký Tưới</h2>
+            <div style="max-height: 280px; overflow-y: auto;">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Hành động</th>
+                            <th>Độ ẩm</th>
+                            <th>Nguyên nhân</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body">
+                        <tr><td colspan="4" class="empty-row">Chưa có dữ liệu</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="panel">
+            <h2>🔔 Cảnh Báo</h2>
+            <div class="alert-list" id="alert-list">
+                <div class="empty-row">Không có cảnh báo</div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Message counter (hidden helper) -->
+<span id="msg-counter" style="display:none;"></span>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
