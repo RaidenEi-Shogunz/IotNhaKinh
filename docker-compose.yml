@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nhakinh-simulator
+    volumes:
+      - ./simulator:/app
+      - ./simulator/.env:/app/.env:ro
+    environment:
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    networks:
+      - nhakinh-network
+
+  dashboard:
+    image: nginx:alpine
+    container_name: nhakinh-dashboard
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+    depends_on:
+      - simulator
+    restart: unless-stopped
+    networks:
+      - nhakinh-network
+
+networks:
+  nhakinh-network:
+    driver: bridge
+
+volumes:
+  nhakinh-data:

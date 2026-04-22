@@ -1,0 +1,23 @@
+# Credentials - KHONG COMMIT FILE NAY
+simulator/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Database & logs
+*.db
+*.log
+
+# Virtual environment
+venv/
+.venv/
+
+.env
+
+*.db
+*.db-wal
+*.db-shm
+greenhouse_state.json
+offline_queue.json

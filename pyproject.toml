@@ -1,0 +1,35 @@
+[tool.ruff]
+# Set the maximum line length to 120 (a common standard for modern Python).
+line-length = 120
+
+# Enable Pyflakes (F) and pycodestyle (E, W).
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+
+# Ignore some specific rules if needed.
+ignore = [
+    # Allow long lines in strings/comments, handled by line-length anyway.
+    "E501",
+]
+
+# Exclude common directories.
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "__pycache__",
+]
+
+# Assume Python 3.10
+target-version = "py310"
+
+[tool.ruff.format]
+# Enable auto-formatting (like Black)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.mccabe]
+# Flag errors if complexity exceeds 10.
+max-complexity = 15
