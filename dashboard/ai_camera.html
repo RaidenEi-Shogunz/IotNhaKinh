@@ -9,8 +9,10 @@
         href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+    <link rel="stylesheet" href="css/ai_pipeline.css">
     <style>
         :root {
             --bg: #080e1a;
@@ -1107,13 +1109,14 @@
                     <div class="brand-icon">🌿</div>
                     <div>
                         <div class="brand-name">AI Nhận Diện Cây Trồng</div>
-                        <div class="brand-sub">Nhà Kính Thông Minh · Google Teachable Machine</div>
+                        <div class="brand-sub">Nhà Kính Thông Minh · 3-Stage Pipeline</div>
                     </div>
                 </div>
             </div>
             <div class="header-badges">
-                <span class="badge badge-tf">TF.js v4</span>
-                <span class="badge badge-version">v5.0</span>
+                <span class="badge badge-tf">MobileNet</span>
+                <span class="badge badge-tf">TM</span>
+                <span class="badge badge-version">v6.0</span>
             </div>
         </div>
 
@@ -1203,6 +1206,10 @@
                             <input type="text" id="model-url"
                                 value="https://teachablemachine.withgoogle.com/models/hFjVe1EyC/">
                         </div>
+                        <div class="form-field full">
+                            <label>Gemini API Key (Dùng cho Stage 3)</label>
+                            <input type="password" id="gemini-key" placeholder="AIzaSy...">
+                        </div>
                     </div>
                     <button class="btn btn-primary" style="width:100%;margin-bottom:0.7rem" onclick="connectMQTT()">📡
                         Kết Nối MQTT</button>
@@ -1234,6 +1241,52 @@
 
             <!-- RIGHT -->
             <div class="right-col">
+                <!-- PIPELINE STAGES INDICATOR -->
+                <div class="card" style="margin-bottom:1.2rem">
+                    <div class="card-title"><span>🔬</span> AI Pipeline 3 Tầng</div>
+                    <div class="pipeline-stages" id="pipeline-stages">
+                        <div class="pipe-stage waiting" id="pipe-s1">
+                            <div class="pipe-num">1</div>
+                            <span>Leaf Gate</span>
+                        </div>
+                        <div class="pipe-arrow" id="pipe-a1">→</div>
+                        <div class="pipe-stage waiting" id="pipe-s2">
+                            <div class="pipe-num">2</div>
+                            <span>Plant Classifier</span>
+                        </div>
+                        <div class="pipe-arrow" id="pipe-a2">→</div>
+                        <div class="pipe-stage waiting" id="pipe-s3">
+                            <div class="pipe-num">3</div>
+                            <span>Gemini AI</span>
+                        </div>
+                    </div>
+
+                    <!-- Gate Result Detail -->
+                    <div class="gate-result" id="gate-result">
+                        <div class="gate-header">
+                            <div class="gate-icon" id="gate-icon">🔬</div>
+                            <div class="gate-title" id="gate-title">Leaf Gate</div>
+                        </div>
+                        <div class="gate-details">
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">MobileNet</div>
+                                <div class="gate-detail-value" id="gate-mnet">—</div>
+                                <div class="mnet-preds" id="gate-mnet-preds"></div>
+                            </div>
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">Green Ratio</div>
+                                <div class="gate-detail-value" id="gate-green">—</div>
+                                <div class="green-bar-wrap">
+                                    <div class="green-bar-bg">
+                                        <div class="green-bar-fill" id="gate-green-bar" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gate-reason" id="gate-reason" style="display:none"></div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-title"><span>🎯</span> Kết Quả Phân Tích</div>
                     <div class="ring-wrap">
@@ -1265,8 +1318,45 @@
                     </div>
                 </div>
 
+                <!-- STAGE 3: GEMINI AI PANEL -->
+                <div class="card" id="gemini-panel">
+                    <div class="card-title"><span style="color:#f59c1a">✨</span> Phân Tích Chuyên Sâu (Stage 3)</div>
+                    <div style="text-align: center; margin-bottom: 0.8rem;">
+                        <button class="btn btn-primary" id="btn-gemini" onclick="triggerGeminiAnalysis()" style="width: 100%" disabled>✨ Yêu cầu Gemini AI phân tích ảnh này</button>
+                    </div>
+                    
+                    <div class="gate-result" id="gemini-result" style="display:none; margin-bottom:0">
+                        <div class="gate-header">
+                            <div class="gate-icon">🤖</div>
+                            <div class="gate-title" style="color:#f59c1a">Gemini AI Agronomist</div>
+                        </div>
+                        <div class="gate-details" style="grid-template-columns: 1fr; gap: 6px">
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">Trạng Thái Sức Khỏe</div>
+                                <div class="gate-detail-value" id="c-status" style="color:#00e5b8">—</div>
+                            </div>
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">Quan Sát Chi Tiết</div>
+                                <ul id="c-obs" style="font-size:0.75rem; color:var(--text); padding-left: 1.2rem; margin-top:4px"></ul>
+                            </div>
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">Sâu Bệnh</div>
+                                <div class="gate-detail-value" id="c-disease" style="font-size:0.75rem; color:#ff4b6e">—</div>
+                            </div>
+                            <div class="gate-detail-item">
+                                <div class="gate-detail-label">Khuyến Nghị Tưới Tiêu</div>
+                                <div class="gate-detail-value" id="c-water" style="font-size:0.75rem; color:#7dd3fc">—</div>
+                            </div>
+                            <div class="gate-detail-item" style="background: rgba(245, 158, 26, 0.08); border-color: rgba(245, 158, 26, 0.2)">
+                                <div class="gate-detail-label" style="color: rgba(245, 158, 26, 0.8)">Lời Khuyên Tổng Quát</div>
+                                <div class="gate-detail-value" id="c-advice" style="font-size:0.78rem; font-weight: 500; color:#f59c1a">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
-                    <div class="card-title"><span>💡</span> Khuyến Nghị Tưới Tiêu</div>
+                    <div class="card-title"><span>💡</span> Khuyến Nghị Tự Động (Stage 2)</div>
                     <div class="rec-box" id="rec-box">Chờ AI phân tích hình ảnh cây trồng...</div>
                     <div class="sp-effect" id="sp-effect"><span>↕</span><span id="sp-text">Đang điều chỉnh
                             ngưỡng...</span></div>
@@ -1663,48 +1753,197 @@
         }
 
         // ════════════════════════════════════════
-        // CORE PREDICTION ENGINE
+        // PIPELINE UI HELPERS
         // ════════════════════════════════════════
+        function setPipeStage(stageId, state) {
+            // state: 'waiting' | 'running' | 'pass' | 'blocked' | 'skipped'
+            const el = $(stageId);
+            if (!el) return;
+            el.className = 'pipe-stage ' + state;
+        }
+
+        function setPipeArrow(arrowId, active) {
+            const el = $(arrowId);
+            if (!el) return;
+            el.classList.toggle('active', active);
+        }
+
+        function resetPipeline() {
+            setPipeStage('pipe-s1', 'waiting');
+            setPipeStage('pipe-s2', 'waiting');
+            setPipeStage('pipe-s3', 'waiting');
+            setPipeArrow('pipe-a1', false);
+            setPipeArrow('pipe-a2', false);
+        }
+
+        function updateGateUI(gateResult) {
+            const gEl = $('gate-result');
+            const mnetEl = $('gate-mnet');
+            const greenEl = $('gate-green');
+            const greenBar = $('gate-green-bar');
+            const predsEl = $('gate-mnet-preds');
+            const reasonEl = $('gate-reason');
+
+            gEl.classList.add('show');
+            gEl.classList.remove('pass', 'blocked');
+            gEl.classList.add(gateResult.pass ? 'pass' : 'blocked');
+
+            // Icon & Title
+            $('gate-icon').textContent = gateResult.pass ? '✅' : '🚫';
+            $('gate-title').textContent = gateResult.pass
+                ? 'Leaf Gate — PASS (Ảnh lá cây)'
+                : 'Leaf Gate — BLOCKED (Không phải cây)';
+
+            // MobileNet result
+            const mn = gateResult.mobilenet;
+            if (mn.pass && mn.plantClasses.length > 0) {
+                const top = mn.plantClasses[0];
+                mnetEl.textContent = `✅ ${top.className} (${(top.probability * 100).toFixed(0)}%)`;
+                mnetEl.className = 'gate-detail-value pass';
+            } else {
+                mnetEl.textContent = `❌ ${mn.topClass} (${(mn.topConf * 100).toFixed(0)}%)`;
+                mnetEl.className = 'gate-detail-value fail';
+            }
+
+            // MobileNet top predictions
+            predsEl.innerHTML = mn.allPreds.slice(0, 3).map(p => {
+                const isPlant = mn.plantClasses.some(pc => pc.className === p.className);
+                return `<span class="${isPlant ? 'plant-match' : ''}">${p.className}: ${(p.probability * 100).toFixed(1)}%</span>`;
+            }).join('<br>');
+
+            // Green ratio
+            const gr = gateResult.greenRatio;
+            greenEl.textContent = gr.pass
+                ? `✅ ${gr.percent}% xanh lá`
+                : `❌ ${gr.percent}% (cần ≥${(LeafGate.CONFIG.GREEN_RATIO_THRESHOLD * 100).toFixed(0)}%)`;
+            greenEl.className = 'gate-detail-value ' + (gr.pass ? 'pass' : 'fail');
+            greenBar.style.width = Math.min(100, gr.ratio * 100 / 0.3 * 100).toFixed(0) + '%';
+            greenBar.className = 'green-bar-fill ' + (gr.pass ? 'pass' : 'fail');
+
+            // Reason (only for blocked)
+            if (!gateResult.pass && gateResult.reason) {
+                reasonEl.style.display = 'block';
+                reasonEl.textContent = gateResult.reason;
+            } else {
+                reasonEl.style.display = 'none';
+            }
+        }
+
+        // ════════════════════════════════════════
+        // CORE PREDICTION ENGINE — 3-Stage Pipeline
+        // ════════════════════════════════════════
+        let _lastGateCheckTime = 0;
+        const _GATE_INTERVAL_CAM = 2000; // Gate mỗi 2s cho camera mode
+        let _lastGatePass = null; // Cache gate result cho camera mode
+
         async function runPredict(source, mode, preComputed = null) {
             statsFrames++; updStats();
+
+            // ───── STAGE 1: Leaf Gate ─────
+            const now = Date.now();
+            let gateResult;
+
+            if (mode === 'camera') {
+                // Camera: chạy gate mỗi 2 giây, cache kết quả
+                if (_lastGatePass === null || (now - _lastGateCheckTime) >= _GATE_INTERVAL_CAM) {
+                    setPipeStage('pipe-s1', 'running');
+                    gateResult = await LeafGate.run(source, mode);
+                    _lastGatePass = gateResult;
+                    _lastGateCheckTime = now;
+                    updateGateUI(gateResult);
+                } else {
+                    gateResult = _lastGatePass;
+                }
+            } else {
+                // Image mode: luôn chạy gate
+                setPipeStage('pipe-s1', 'running');
+                gateResult = await LeafGate.run(source, mode);
+                updateGateUI(gateResult);
+            }
+
+            // Gate blocked → dừng pipeline
+            if (!gateResult.pass) {
+                setPipeStage('pipe-s1', 'blocked');
+                setPipeStage('pipe-s2', 'skipped');
+                setPipeStage('pipe-s3', 'skipped');
+                setPipeArrow('pipe-a1', false);
+                setPipeArrow('pipe-a2', false);
+
+                const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
+
+                if (mode === 'camera') {
+                    offFrames++;
+                    if (offFrames >= OFF_FRAMES_CAM) {
+                        showOTAlert(true, alertId,
+                            '🚫 Leaf Gate: Không phải ảnh cây trồng!',
+                            gateResult.reason);
+                    }
+                } else {
+                    showOTAlert(true, alertId,
+                        '🚫 Leaf Gate: Ảnh không chứa thực vật!',
+                        gateResult.reason);
+                }
+
+                statsOT++; updStats();
+                updateRing(gateResult.mobilenet.topConf, 'var(--danger)');
+                const bc = $('best-class');
+                bc.textContent = '🚫 Leaf Gate: Không phải cây trồng';
+                bc.style.color = 'var(--danger)';
+                $('pred-list').innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">Stage 1 đã chặn — Không phải ảnh lá cây / thực vật.<br>Hãy hướng camera vào cây trồng.</div>';
+                updateRec('', 0, true);
+                if (mode === 'image' || offFrames >= OFF_FRAMES_CAM) addHist('Blocked by Gate', 0, true, mode);
+                return;
+            }
+
+            // Gate passed!
+            setPipeStage('pipe-s1', 'pass');
+            setPipeArrow('pipe-a1', true);
+            offFrames = 0;
+            const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
+            showOTAlert(false, alertId, '', '');
+
+            // ───── STAGE 2: Plant Classifier (Teachable Machine) ─────
+            setPipeStage('pipe-s2', 'running');
             const preds = preComputed || await model.predict(source);
 
             // Best class
             let bestCls = preds[0].className, bestConf = preds[0].probability;
             preds.forEach(p => { if (p.probability > bestConf) { bestConf = p.probability; bestCls = p.className; } });
 
-            // Off-topic detection
+            // Entropy-based off-topic detection (Stage 2 level)
             const { isOT, reason, H, maxConf } = detectOffTopic(preds);
-
             updateEntropyBar(H);
 
-            const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
-
             if (isOT) {
-                if (mode === 'camera') {
-                    offFrames++;
-                    if (offFrames >= OFF_FRAMES_CAM) {
-                        showOTAlert(true, alertId,
-                            `⚠️ Không nhận diện được! (${(maxConf * 100).toFixed(0)}% tin cậy)`,
-                            reason);
-                    }
-                } else {
-                    showOTAlert(true, alertId, '❌ Không phải hình ảnh cây trồng!', reason);
-                }
+                setPipeStage('pipe-s2', 'blocked');
+                setPipeStage('pipe-s3', 'skipped');
+                setPipeArrow('pipe-a2', false);
 
                 statsOT++; updStats();
                 updateRing(maxConf, 'var(--danger)');
                 const bc = $('best-class');
-                bc.textContent = '❌ Ngoài phạm vi nhận diện'; bc.style.color = 'var(--danger)';
+                bc.textContent = '⚠️ Mô hình TM không nhận diện được';
+                bc.style.color = 'var(--danger)';
                 renderPreds(preds, null);
                 updateRec(bestCls, bestConf, true);
-                if (mode === 'image' || offFrames >= OFF_FRAMES_CAM) addHist(bestCls, bestConf, true, mode);
+                addHist(bestCls, bestConf, true, mode);
                 return;
             }
 
-            // Valid detection
-            offFrames = 0;
-            showOTAlert(false, alertId, '', '');
+            // Stage 2 passed!
+            setPipeStage('pipe-s2', 'pass');
+            setPipeArrow('pipe-a2', true);
+
+            // Stage 3 placeholder (Gemini AI - future)
+            setPipeStage('pipe-s3', 'waiting');
+            $('btn-gemini').disabled = false;
+            
+            // Store current context for Gemini
+            window._currentGeminiContext = {
+                source: source,
+                tmClass: bestCls,
+                mode: mode
+            };
 
             const ringColor = bestConf >= 0.85 ? 'var(--ok)' : bestConf >= 0.65 ? 'var(--warn)' : 'var(--danger)';
             updateRing(bestConf, ringColor);
@@ -1726,16 +1965,94 @@
         // INIT
         // ════════════════════════════════════════
         document.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('aio_username');
-            if (saved) $('aio-user').value = saved;
+            const savedAio = localStorage.getItem('aio_username');
+            if (savedAio) $('aio-user').value = savedAio;
+            
+            const savedGemini = localStorage.getItem('gemini_apikey');
+            if (savedGemini) $('gemini-key').value = savedGemini;
+            
+            $('gemini-key').addEventListener('change', (e) => {
+                localStorage.setItem('gemini_apikey', e.target.value);
+            });
 
-            // Pre-load model in background
+            // Pre-load both models in background
             setTimeout(async () => {
+                // Stage 1: MobileNet
+                try {
+                    await LeafGate.loadMobileNet();
+                    toast('✅ MobileNet (Leaf Gate) đã sẵn sàng!');
+                } catch (e) {
+                    console.warn('[Init] MobileNet load failed:', e);
+                }
+
+                // Stage 2: Teachable Machine
                 const ok = await loadModel();
-                if (ok) { buildPredBars(); toast('✅ Mô hình AI đã sẵn sàng!'); }
+                if (ok) { buildPredBars(); toast('✅ Teachable Machine đã sẵn sàng!'); }
             }, 600);
         });
+
+        // ════════════════════════════════════════
+        // TRIGGER GEMINI AI ANALYSIS
+        // ════════════════════════════════════════
+        async function triggerGeminiAnalysis() {
+            if (!window._currentGeminiContext) return;
+            const apiKey = $('gemini-key').value.trim();
+            if (!apiKey) {
+                toast('⚠️ Vui lòng nhập Gemini API Key trong cấu hình!');
+                return;
+            }
+
+            const btn = $('btn-gemini');
+            const resPanel = $('gemini-result');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="display:inline-block; vertical-align:middle; width:14px; height:14px; margin-right:6px"></div> Đang phân tích...';
+            setPipeStage('pipe-s3', 'running');
+            resPanel.style.display = 'none';
+
+            try {
+                const { source, tmClass } = window._currentGeminiContext;
+                const result = await GeminiVision.analyze(source, apiKey, tmClass);
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                // Render results
+                $('c-status').textContent = result.status || "Chưa xác định";
+                $('c-disease').textContent = result.disease_pest || "Không rõ";
+                $('c-water').textContent = result.water_advice || "Chưa có thông tin";
+                $('c-advice').textContent = result.general_advice || "Chưa có thông tin";
+                
+                const obsList = $('c-obs');
+                obsList.innerHTML = '';
+                if (Array.isArray(result.observations)) {
+                    result.observations.forEach(o => {
+                        const li = document.createElement('li');
+                        li.textContent = o;
+                        obsList.appendChild(li);
+                    });
+                } else if (result.observations) {
+                    const li = document.createElement('li');
+                    li.textContent = result.observations;
+                    obsList.appendChild(li);
+                }
+
+                resPanel.style.display = 'block';
+                setPipeStage('pipe-s3', 'pass');
+                toast('✨ Hoàn tất phân tích chuyên sâu bởi Gemini!');
+            } catch (err) {
+                console.error(err);
+                toast('❌ Lỗi Gemini AI: ' + err.message);
+                setPipeStage('pipe-s3', 'blocked');
+            } finally {
+                btn.innerHTML = '✨ Yêu cầu Gemini AI phân tích ảnh này';
+                btn.disabled = false;
+            }
+        }
     </script>
+    <script src="js/leaf_gate.js"></script>
+    <script src="js/gemini_vision.js"></script>
 </body>
 
 </html>

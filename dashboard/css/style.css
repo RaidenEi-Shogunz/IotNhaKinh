@@ -799,6 +799,23 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 .panel-header h2 { margin-bottom: 0; }
 
+/* ================================================================
+   Sparklines
+   ================================================================ */
+.sparkline-wrap {
+    margin-top: 8px;
+    height: 30px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    opacity: 0.8;
+}
+.sparkline-wrap canvas {
+    max-width: 100px;
+    height: 100%;
+}
+
+
 /* Local API Badge (từ nâng cấp v4.0) */
 .local-badge {
     font-size: 0.72rem;

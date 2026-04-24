@@ -1,0 +1,286 @@
+/* ══════════════════════════════════════════════════════════
+   AI PIPELINE — Stage Indicator CSS
+   3-stage pipeline: Leaf Gate → Plant Classifier → Claude AI
+   ══════════════════════════════════════════════════════════ */
+
+/* Pipeline Container */
+.pipeline-stages {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.2rem;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 200, 170, 0.1);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.pipeline-stages::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 229, 184, 0.2), transparent);
+}
+
+/* Stage Item */
+.pipe-stage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: all 0.35s ease;
+    position: relative;
+    white-space: nowrap;
+}
+
+/* Stage Number Circle */
+.pipe-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
+    transition: all 0.3s;
+}
+
+/* Arrow between stages */
+.pipe-arrow {
+    color: rgba(255, 255, 255, 0.12);
+    font-size: 0.75rem;
+    padding: 0 6px;
+    flex-shrink: 0;
+    transition: color 0.3s;
+}
+
+.pipe-arrow.active {
+    color: rgba(0, 229, 184, 0.5);
+}
+
+/* ── Stage States ── */
+
+/* Waiting (chưa chạy) */
+.pipe-stage.waiting {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.pipe-stage.waiting .pipe-num {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Running (đang chạy) */
+.pipe-stage.running {
+    color: #7dd3fc;
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.pipe-stage.running .pipe-num {
+    background: rgba(56, 189, 248, 0.2);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    animation: pulse-stage 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-stage {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
+}
+
+/* Pass (đã qua) */
+.pipe-stage.pass {
+    color: #00e5b8;
+}
+
+.pipe-stage.pass .pipe-num {
+    background: rgba(0, 229, 184, 0.2);
+    color: #00e5b8;
+    border: 1px solid rgba(0, 229, 184, 0.4);
+}
+
+/* Blocked (bị chặn) */
+.pipe-stage.blocked {
+    color: #ff4b6e;
+}
+
+.pipe-stage.blocked .pipe-num {
+    background: rgba(255, 75, 110, 0.2);
+    color: #ff4b6e;
+    border: 1px solid rgba(255, 75, 110, 0.4);
+}
+
+/* Skipped (bị skip do stage trước block) */
+.pipe-stage.skipped {
+    color: rgba(255, 255, 255, 0.15);
+    opacity: 0.4;
+}
+
+.pipe-stage.skipped .pipe-num {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.15);
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+/* ── Gate Result Detail Card ── */
+.gate-result {
+    display: none;
+    margin-bottom: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 10px;
+    animation: slide-down 0.3s ease;
+}
+
+.gate-result.show {
+    display: block;
+}
+
+.gate-result.pass {
+    background: linear-gradient(135deg, rgba(0, 229, 184, 0.06), rgba(0, 229, 184, 0.02));
+    border: 1px solid rgba(0, 229, 184, 0.2);
+}
+
+.gate-result.blocked {
+    background: linear-gradient(135deg, rgba(255, 75, 110, 0.08), rgba(245, 158, 26, 0.06));
+    border: 1px solid rgba(255, 75, 110, 0.3);
+}
+
+.gate-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.gate-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.gate-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.gate-result.pass .gate-title {
+    color: #00e5b8;
+}
+
+.gate-result.blocked .gate-title {
+    color: #ff4b6e;
+}
+
+/* Gate detail rows */
+.gate-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.gate-detail-item {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.gate-detail-label {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 2px;
+}
+
+.gate-detail-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.gate-detail-value.pass {
+    color: #00e5b8;
+}
+
+.gate-detail-value.fail {
+    color: #ff4b6e;
+}
+
+/* Green ratio bar */
+.green-bar-wrap {
+    margin-top: 4px;
+}
+
+.green-bar-bg {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.green-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.green-bar-fill.pass {
+    background: linear-gradient(90deg, #22c55e, #00e5b8);
+}
+
+.green-bar-fill.fail {
+    background: linear-gradient(90deg, #ef4444, #f59c1a);
+}
+
+/* MobileNet predictions mini list */
+.mnet-preds {
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.6;
+}
+
+.mnet-preds .plant-match {
+    color: #00e5b8;
+    font-weight: 600;
+}
+
+.gate-reason {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: rgba(255, 75, 110, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid rgba(255, 75, 110, 0.4);
+}
+
+@media (max-width: 600px) {
+    .pipeline-stages {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .pipe-stage {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+    }
+    .gate-details {
+        grid-template-columns: 1fr;
+    }
+}

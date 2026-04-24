@@ -96,6 +96,7 @@
                     <div class="gauge-unit">%</div>
                 </div>
                 <div class="sensor-status" id="status-moisture">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-moisture" width="100" height="30"></canvas></div>
             </div>
 
             <!-- Nhiệt Độ -->
@@ -111,6 +112,7 @@
                     <div class="gauge-unit">°C</div>
                 </div>
                 <div class="sensor-status" id="status-temperature">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-temperature" width="100" height="30"></canvas></div>
             </div>
 
             <!-- Ánh Sáng -->
@@ -126,6 +128,7 @@
                     <div class="gauge-unit">lux</div>
                 </div>
                 <div class="sensor-status" id="status-light">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-light" width="100" height="30"></canvas></div>
             </div>
 
             <!-- Độ Ẩm Không Khí -->
@@ -141,6 +144,7 @@
                     <div class="gauge-unit">%</div>
                 </div>
                 <div class="sensor-status" id="status-humidity">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-humidity" width="100" height="30"></canvas></div>
             </div>
 
             <!-- CO2 -->
@@ -156,6 +160,7 @@
                     <div class="gauge-unit">ppm</div>
                 </div>
                 <div class="sensor-status" id="status-co2">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-co2" width="100" height="30"></canvas></div>
             </div>
         </section>
 
@@ -168,10 +173,11 @@
                 <div class="panel-header">
                     <h2>💧 Biểu Đồ Độ Ẩm Đất</h2>
                     <button id="reset-moisture-zoom" class="btn-reset-zoom hidden"
-                            onclick="import('./js/chartManager.js').then(m=>m.resetZoom('moisture'))"
-                            title="Về zoom gốc">↺ Reset</button>
+                        onclick="import('./js/chartManager.js').then(m=>m.resetZoom('moisture'))" title="Về zoom gốc">↺
+                        Reset</button>
                 </div>
-                <div class="chart-hint">🖱 Scroll = zoom · Kéo = pan · Vùng <span class="hint-green">xanh</span> = đang tưới</div>
+                <div class="chart-hint">🖱 Scroll = zoom · Kéo = pan · Vùng <span class="hint-green">xanh</span> = đang
+                    tưới</div>
                 <div class="chart-container moisture-chart-container" id="moisture-chart-container">
                     <div id="moisture-skeleton" class="skeleton-box chart-skeleton" aria-live="polite">
                         Đang tải dữ liệu độ ẩm...
@@ -183,15 +189,18 @@
                 <div class="panel-header" style="margin-top:1.75rem;">
                     <h2>🌡️ Overlay: Ẩm + Nhiệt</h2>
                     <button id="reset-overlay-zoom" class="btn-reset-zoom hidden"
-                            onclick="import('./js/chartManager.js').then(m=>m.resetZoom('overlay'))"
-                            title="Về zoom gốc">↺ Reset</button>
+                        onclick="import('./js/chartManager.js').then(m=>m.resetZoom('overlay'))" title="Về zoom gốc">↺
+                        Reset</button>
                 </div>
-                <div class="chart-hint">Trục <span style="color:#3b82f6;font-weight:600;">xanh = độ ẩm</span> (trái) · <span style="color:#ef4444;font-weight:600;">đỏ = nhiệt độ</span> (phải)</div>
+                <div class="chart-hint">Trục <span style="color:#3b82f6;font-weight:600;">xanh = độ ẩm</span> (trái) ·
+                    <span style="color:#ef4444;font-weight:600;">đỏ = nhiệt độ</span> (phải)
+                </div>
                 <div class="chart-container overlay-chart-container" id="overlay-chart-container">
                     <div id="overlay-skeleton" class="skeleton-box chart-skeleton" aria-live="polite">
                         Đang tải biểu đồ overlay...
                     </div>
-                    <canvas id="overlay-chart" style="display:none;" aria-label="Biểu đồ overlay độ ẩm và nhiệt độ"></canvas>
+                    <canvas id="overlay-chart" style="display:none;"
+                        aria-label="Biểu đồ overlay độ ẩm và nhiệt độ"></canvas>
                 </div>
 
                 <!-- ── Biểu đồ cảm biến phụ (tab switch) ── -->
@@ -200,17 +209,17 @@
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div class="chart-tabs" role="tablist">
                             <button class="tab active" data-chart="temperature" role="tab" aria-selected="true"
-                                    aria-controls="sensor-chart">Nhiệt độ</button>
+                                aria-controls="sensor-chart">Nhiệt độ</button>
                             <button class="tab" data-chart="light" role="tab" aria-selected="false"
-                                    aria-controls="sensor-chart">Ánh sáng</button>
+                                aria-controls="sensor-chart">Ánh sáng</button>
                             <button class="tab" data-chart="humidity" role="tab" aria-selected="false"
-                                    aria-controls="sensor-chart">Độ ẩm KK</button>
+                                aria-controls="sensor-chart">Độ ẩm KK</button>
                             <button class="tab" data-chart="co2" role="tab" aria-selected="false"
-                                    aria-controls="sensor-chart">CO₂</button>
+                                aria-controls="sensor-chart">CO₂</button>
                         </div>
                         <button id="reset-sensor-zoom" class="btn-reset-zoom hidden"
-                                onclick="import('./js/chartManager.js').then(m=>m.resetZoom('sensor'))"
-                                title="Về zoom gốc">↺ Reset</button>
+                            onclick="import('./js/chartManager.js').then(m=>m.resetZoom('sensor'))"
+                            title="Về zoom gốc">↺ Reset</button>
                     </div>
                 </div>
                 <div class="chart-container" id="chart-container">
@@ -267,13 +276,11 @@
                     <h4>🤖 Phân Tích AI</h4>
                     <div class="ai-status" id="ai-status" aria-live="polite">Đang phân tích...</div>
                     <div id="ai-recommendation" class="ai-recommendation-text" aria-live="polite"></div>
-                    <a href="ai_camera.html" target="_blank" id="btn-ai-camera"
-                       style="display:inline-block; margin-top:10px; padding:8px 16px;
+                    <a href="ai_camera.html" target="_blank" id="btn-ai-camera" style="display:inline-block; margin-top:10px; padding:8px 16px;
                               background:linear-gradient(135deg,#00d4aa,#7c3aed);
                               color:#fff; border-radius:8px; text-decoration:none;
                               font-size:0.8rem; font-weight:600; transition:transform 0.15s;"
-                       onmouseover="this.style.transform='translateY(-1px)'"
-                       onmouseout="this.style.transform='none'">
+                        onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
                         📷 Mở Camera AI
                     </a>
                 </div>
@@ -326,7 +333,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <!-- Annotation plugin: ve duong doc + vung to mau khi bom bat/tat -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <!-- Zoom plugin: scroll de zoom, keo de pan tren truc X -->
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>

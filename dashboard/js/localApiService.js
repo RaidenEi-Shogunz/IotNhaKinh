@@ -139,6 +139,11 @@ function _applySnapshot(data) {
     if (data.ai) {
         updateAIDisplay(data.ai);
     }
+    
+    // ML Predictions
+    if (data.predictions) {
+        state.history.predictions = data.predictions;
+    }
 
     // Dong ho + thoi tiet
     if (data.sim_time) {

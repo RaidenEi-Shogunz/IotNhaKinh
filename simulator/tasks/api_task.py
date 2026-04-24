@@ -36,12 +36,12 @@ from tasks.base_task import BaseTask
 
 logger = logging.getLogger("task.api")
 
-# Guard import optionals
 try:
     import uvicorn
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import JSONResponse, FileResponse
     from pydantic import BaseModel
     _FASTAPI_AVAILABLE = True
 except ImportError:
@@ -124,6 +124,7 @@ class APIServerTask(BaseTask):
         self._last_broadcast: float = 0.0
         self._broadcast_interval: float = getattr(config, "WS_BROADCAST_INTERVAL", 2.0)
         self._started: bool = False
+        self._event_loop: Optional[Any] = None  # FIX: Luu event loop cua uvicorn thread
 
         if _FASTAPI_AVAILABLE:
             self._app = self._build_app()
@@ -141,6 +142,14 @@ class APIServerTask(BaseTask):
             version="4.0.0",
         )
 
+        # FIX: Capture event loop khi uvicorn khoi dong xong
+        # Dung on_event("startup") de lay loop tu ben trong async context
+        @app.on_event("startup")
+        async def _capture_loop():
+            import asyncio
+            self._event_loop = asyncio.get_running_loop()
+            logger.info("[WS] Da capture event loop cho broadcast real-time")
+
         # CORS: cho phep dashboard HTML (file://) va localhost dev server
         app.add_middleware(
             CORSMiddleware,
@@ -152,6 +161,8 @@ class APIServerTask(BaseTask):
         gh  = self.greenhouse
         cfg = self.config
         mgr = self.ws_manager
+        
+        # Moved dashboard mount to bottom
 
         # ---- GET /health ------------------------------------------------
         @app.get("/health")
@@ -180,6 +191,8 @@ class APIServerTask(BaseTask):
             weather = gh.get_weather()
             ai      = gh.get_ai_status()
             stats   = gh.get_statistics()
+            crop    = gh.get_crop_state()
+            predictions = getattr(gh, "prediction_points", [])
             return {
                 "timestamp":   time.time(),
                 "sim_time":    gh.get_sim_time_str(),
@@ -196,7 +209,70 @@ class APIServerTask(BaseTask):
                 "pid":     pid,
                 "weather": weather,
                 "ai":      ai,
+                "crop":    crop,
+                "predictions": predictions,
             }
+
+        # ---- POST /api/gemini -------------------------------------------
+        @app.post("/api/gemini")
+        async def proxy_gemini(request: Request):
+            """Proxy goi API Gemini Vision tranh loi CORS tu trinh duyet."""
+            try:
+                data = await request.json()
+                api_key = data.get("api_key")
+                image_base64 = data.get("image")
+                prompt = data.get("prompt", "Phân tích chi tiết tình trạng cây trồng trong ảnh này và đưa ra khuyến nghị chăm sóc.")
+                
+                if not api_key or not image_base64:
+                    raise HTTPException(status_code=400, detail="Thiếu api_key hoặc image base64")
+                    
+                # Xóa Data URI prefix nếu có
+                if "," in image_base64:
+                    image_base64 = image_base64.split(",")[1]
+
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                headers = {
+                    "content-type": "application/json"
+                }
+                
+                payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {
+                                    "text": prompt
+                                },
+                                {
+                                    "inline_data": {
+                                        "mime_type": "image/jpeg",
+                                        "data": image_base64
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "generationConfig": {
+                        "response_mime_type": "application/json"
+                    }
+                }
+                
+                import urllib.request
+                import json
+                import urllib.error
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+                
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    res_body = response.read().decode('utf-8')
+                    return json.loads(res_body)
+                    
+            except urllib.error.HTTPError as e:
+                err_msg = e.read().decode('utf-8')
+                logger.error(f"[Gemini Proxy] HTTP Error: {err_msg}")
+                raise HTTPException(status_code=e.code, detail=f"Gemini API Error: {err_msg}")
+            except Exception as e:
+                logger.error(f"[Gemini Proxy] Error: {e}")
+                raise HTTPException(status_code=500, detail=f"Proxy Error: {str(e)}")
+
 
         # ---- GET /api/history -------------------------------------------
         @app.get("/api/history")
@@ -369,6 +445,16 @@ class APIServerTask(BaseTask):
                 mgr.remove(websocket)
                 logger.info(f"[WS] Client ngat ket noi. Con lai: {mgr.count()}")
 
+        # FIX: Phuc vu truc tiep giao dien Dashboard qua FastAPI de khong can dung Live Server
+        # Luon de mount("/") o cuoi cung de khong che khuat cac route API khac!
+        import os
+        dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "dashboard")
+        if os.path.exists(dashboard_dir):
+            @app.get("/")
+            async def serve_dashboard_index():
+                return FileResponse(os.path.join(dashboard_dir, "index.html"))
+            app.mount("/", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
+
         return app
 
     def _build_ws_payload(self) -> dict:
@@ -379,6 +465,8 @@ class APIServerTask(BaseTask):
         weather = gh.get_weather()
         ai      = gh.get_ai_status()
         stats   = gh.get_statistics()
+        crop    = gh.get_crop_state()
+        predictions = getattr(gh, "prediction_points", [])
         return {
             "type":      "snapshot",
             "timestamp": time.time(),
@@ -396,6 +484,8 @@ class APIServerTask(BaseTask):
             "pid":     pid,
             "weather": weather,
             "ai":      ai,
+            "crop":    crop,
+            "predictions": predictions,
             "recent_alerts": gh.get_recent_alerts(count=5),
         }
 
@@ -448,10 +538,10 @@ class APIServerTask(BaseTask):
             return
         self._last_broadcast = now
 
-        # Lay event loop dang chay trong uvicorn thread
+        # FIX: Dung event loop da capture tu startup event thay vi config.loop (khong ton tai)
         try:
             import asyncio
-            loop = self._uvicorn_server.config.loop  # type: ignore[attr-defined]
+            loop = self._event_loop
             if loop and loop.is_running():
                 payload = self._build_ws_payload()
                 asyncio.run_coroutine_threadsafe(

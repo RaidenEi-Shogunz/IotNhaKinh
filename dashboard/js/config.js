@@ -41,6 +41,7 @@ export const state = {
         light:       [],
         humidity:    [],
         co2:         [],
+        predictions: [],
     },
     alerts:      [],
     wateringLog: [],

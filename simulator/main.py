@@ -36,6 +36,7 @@ from tasks.ai_task import AITask
 from tasks.alert_task import AlertTask
 from tasks.persistence_task import PersistenceTask
 from tasks.api_task import APIServerTask
+from tasks.predict_task import PredictiveTask
 
 
 BANNER = r"""
@@ -59,6 +60,12 @@ def setup_logging():
     )
 
     # Console handler
+    if sys.stdout.encoding.lower() != 'utf-8':
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except AttributeError:
+            pass
+            
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(formatter)
     console.setLevel(logging.INFO)
@@ -126,6 +133,7 @@ def main():
     alert_task       = AlertTask(greenhouse, config)
     persistence_task = PersistenceTask(greenhouse, config)
     api_task         = APIServerTask(greenhouse, config, db_path=config.DB_PATH)
+    predict_task     = PredictiveTask(greenhouse, config)
     logger.info("[OK] 7 tasks da tao xong (HealthCheck -> APIServerTask)")
 
     # 3. MQTT connect
@@ -167,6 +175,10 @@ def main():
     scheduler.register_task(
         "LuuTru",    persistence_task.run,
         interval=config.TASK_INTERVAL_PERSISTENCE,  priority=2,
+    )
+    scheduler.register_task(
+        "Predict",   predict_task.run,
+        interval=10.0,  priority=4,
     )
     scheduler.register_task(
         "API",       api_task.run,

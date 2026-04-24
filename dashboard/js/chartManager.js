@@ -26,6 +26,7 @@ import { debounce } from './utils.js';
 let moistureChart = null;   // Biểu đồ độ ẩm cố định (top) — có annotation + zoom
 let sensorChart   = null;   // Biểu đồ cảm biến phụ (tab) — có zoom
 let overlayChart  = null;   // Dual-axis: moisture trái + temperature phải
+let sparklineCharts = {};   // 5 sparkline mini charts
 
 // ─── Plugin flags (kiểm tra sau khi CDN load) ────────────────────────────────
 let _annotationOk = false;
@@ -181,6 +182,8 @@ export function initChart(forceRecreate = false) {
         moistureChart?.destroy(); moistureChart = null;
         sensorChart?.destroy();   sensorChart   = null;
         overlayChart?.destroy();  overlayChart  = null;
+        Object.values(sparklineCharts).forEach(c => c?.destroy());
+        sparklineCharts = {};
     }
 
     _detectPlugins();
@@ -200,6 +203,47 @@ export function initChart(forceRecreate = false) {
 
     // 3. Overlay — dual Y-axis + annotation + zoom
     if (cOverlay) overlayChart = _makeOverlayChart(cOverlay, tick, grid);
+    
+    // 4. Sparklines
+    Object.keys(CFGS).forEach(key => {
+        const cSpark = document.getElementById(`sparkline-${key}`);
+        if (cSpark) {
+            sparklineCharts[key] = _makeSparkline(cSpark, CFGS[key]);
+        }
+    });
+}
+
+// ─── Sparkline mini chart ─────────────────────────────────────────────────────
+function _makeSparkline(canvas, cfg) {
+    return new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: cfg.color,
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            },
+            scales: {
+                x: { display: false },
+                y: { display: false, min: cfg.min, max: cfg.max }
+            },
+            interaction: { mode: null },
+            layout: { padding: 0 }
+        }
+    });
 }
 
 // ─── Moisture chart ───────────────────────────────────────────────────────────
@@ -212,17 +256,31 @@ function _makeMoistureChart(canvas, tick, grid) {
         type: 'line',
         data: {
             labels:   [],
-            datasets: [{
-                label:            'Độ ẩm đất (%)',
-                data:             [],
-                borderColor:      C.moisture,
-                backgroundColor:  C.moisture + '22',
-                borderWidth:      2.5,
-                fill:             true,
-                tension:          0.4,
-                pointRadius:      2,
-                pointHoverRadius: 6,
-            }],
+            datasets: [
+                {
+                    label:            'Độ ẩm đất (%)',
+                    data:             [],
+                    borderColor:      C.moisture,
+                    backgroundColor:  C.moisture + '22',
+                    borderWidth:      2.5,
+                    fill:             true,
+                    tension:          0.4,
+                    pointRadius:      2,
+                    pointHoverRadius: 6,
+                },
+                {
+                    label:            'Dự đoán AI (%)',
+                    data:             [],
+                    borderColor:      '#ff3366',
+                    backgroundColor:  'transparent',
+                    borderWidth:      2,
+                    borderDash:       [5, 5],
+                    fill:             false,
+                    tension:          0.4,
+                    pointRadius:      3,
+                    pointStyle:       'rectRot',
+                }
+            ],
         },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -362,10 +420,30 @@ export function refreshChart() {
     const h  = state.history;
     const ts = [...h.timestamps];
 
-    // 1. Moisture chart
+    // 1. Moisture chart with Predictions
     const annMoisture = _buildAnnotations(ts);
-    moistureChart.data.labels           = ts;
-    moistureChart.data.datasets[0].data = [...h.moisture];
+    
+    // Combine timestamps with prediction timestamps
+    let combinedTs = [...ts];
+    let moistureData = [...h.moisture];
+    let predictData = new Array(h.moisture.length).fill(null);
+    
+    if (h.predictions && h.predictions.length > 0) {
+        // Noi hien tai vao duong du doan de bieu do lien mach
+        predictData[predictData.length - 1] = moistureData[moistureData.length - 1];
+        
+        h.predictions.forEach(p => {
+            const timeStr = new Date(p.timestamp * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            combinedTs.push(timeStr);
+            moistureData.push(null); // Không có data thực tế trong tương lai
+            predictData.push(p.value);
+        });
+    }
+
+    moistureChart.data.labels           = combinedTs;
+    moistureChart.data.datasets[0].data = moistureData;
+    moistureChart.data.datasets[1].data = predictData;
+    
     if (_annotationOk && moistureChart.options.plugins?.annotation) {
         moistureChart.options.plugins.annotation.annotations = annMoisture;
     }
@@ -396,8 +474,22 @@ export function refreshChart() {
         }
         overlayChart.update('none');
     }
+    
+    // 4. Update sparklines
+    // Chỉ lấy 30 data points gần nhất để vẽ cho nhẹ và đúng ý nghĩa mini-chart
+    Object.keys(sparklineCharts).forEach(key => {
+        const spark = sparklineCharts[key];
+        if (spark) {
+            const arr = h[key] || [];
+            // Lấy 30 điểm cuối
+            const sliceData = arr.length > 30 ? arr.slice(-30) : arr;
+            spark.data.labels = new Array(sliceData.length).fill('');
+            spark.data.datasets[0].data = sliceData;
+            spark.update('none');
+        }
+    });
 
-    // 4. Ẩn skeleton khi có dữ liệu
+    // 5. Ẩn skeleton khi có dữ liệu
     _hideSkeleton('moisture-skeleton', 'moisture-chart');
     _hideSkeleton('chart-skeleton',    'sensor-chart');
     _hideSkeleton('overlay-skeleton',  'overlay-chart');

@@ -20,6 +20,13 @@ class AlertTask(BaseTask):
         self.greenhouse = greenhouse
         self.config = config
         self._cooldowns = {}
+        
+        # Buffer for Trend & Z-score detection
+        self.HISTORY_MAX = 60
+        self._history = {
+            "soil_moisture": [],
+            "temperature": []
+        }
 
     def shutdown(self) -> None:
         """Khong co tai nguyen can giai phong."""
@@ -29,6 +36,12 @@ class AlertTask(BaseTask):
         cfg = self.config
         sensors = self.greenhouse.get_sensors()
         now = time.time()
+        
+        # Update rolling history for analytics
+        for key in ["soil_moisture", "temperature"]:
+            self._history[key].append(sensors[key])
+            if len(self._history[key]) > self.HISTORY_MAX:
+                self._history[key].pop(0)
 
         checks = [
             ("MOISTURE_LOW", 15 <= sensors["soil_moisture"] < cfg.MOISTURE_LOW,
@@ -75,6 +88,40 @@ class AlertTask(BaseTask):
             ("PH_CRITICAL_LOW", sensors["ph_level"] < cfg.PH_MIN_CLAMP + 0.5,
              f"pH NGUY HIEM - acid nang: {sensors['ph_level']:.2f}!", "CRITICAL"),
         ]
+
+        # ---------------------------------------------------------
+        # AI ALERT ENGINE: Trend Detection + Anomaly Z-Score
+        # ---------------------------------------------------------
+        hist_m = self._history["soil_moisture"]
+        if len(hist_m) >= 20:
+            # Tốc độ thay đổi (%/phút) - Giả sử 1 tick ~ 1 giây mô phỏng
+            rate_m = ((hist_m[-1] - hist_m[0]) / len(hist_m)) * 60
+            if rate_m <= -2.0:
+                checks.append(("MOISTURE_LEAK_TREND", True,
+                 f"Độ ẩm đang giảm {abs(rate_m):.1f}%/phút — Cảnh báo đất không giữ được nước hoặc rò rỉ!", "CRITICAL"))
+
+            mean_m = sum(hist_m) / len(hist_m)
+            std_m = (sum((x - mean_m)**2 for x in hist_m) / len(hist_m)) ** 0.5
+            if std_m > 0.05:
+                z_m = (sensors["soil_moisture"] - mean_m) / std_m
+                if z_m < -3.0:
+                    checks.append(("MOISTURE_ANOMALY_ZSCORE", True,
+                     f"Bất thường độ ẩm (Z-score: {z_m:.1f}) — Suy giảm đột biến ngoài dự đoán thống kê!", "WARNING"))
+
+        hist_t = self._history["temperature"]
+        if len(hist_t) >= 20:
+            rate_t = ((hist_t[-1] - hist_t[0]) / len(hist_t)) * 60
+            if rate_t >= 3.0:
+                checks.append(("TEMP_SPIKE_TREND", True,
+                 f"Nhiệt độ đang tăng {rate_t:.1f}°C/phút — Kiểm tra hệ thống thông gió hoặc tản nhiệt ngay!", "CRITICAL"))
+
+            mean_t = sum(hist_t) / len(hist_t)
+            std_t = (sum((x - mean_t)**2 for x in hist_t) / len(hist_t)) ** 0.5
+            if std_t > 0.05:
+                z_t = (sensors["temperature"] - mean_t) / std_t
+                if z_t > 3.0:
+                    checks.append(("TEMP_ANOMALY_ZSCORE", True,
+                     f"Bất thường nhiệt độ (Z-score: {z_t:.1f}) — Tăng vọt bất thường!", "WARNING"))
 
         for alert_type, condition, message, severity in checks:
             if not condition:

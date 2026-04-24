@@ -192,6 +192,40 @@ PH_MICROBIAL_NIGHT: float   = 0.002  # pH giam ban dem (vi sinh vat + CO2 dat)
 PH_FERTILIZER_ACIDIFY: float = 0.0003 # pH giam rat cham do phan bon ammonium
 PH_EQUILIBRIUM: float       = 6.8    # pH can bang tu nhien dat nha kinh
 
+# ============================================================
+# Crop Model — FAO-56 Kc + Water Stress Index (WSI)
+#
+# Ly thuyet (FAO Irrigation & Drainage Paper 56):
+#   Kc (Crop Coefficient): ti so giua ET cay trong va ET tham chieu
+#   Thay doi theo 4 giai doan sinh truong:
+#     Initial -> Development -> Mid-season -> Late-season
+#
+#   WSI (Water Stress Index, tu AquaCrop simplified):
+#     WSI = 0: du nuoc, stomata mo toi da
+#     WSI = 1: heo, stomata dong, khong thoat hoi nuoc
+#     Ks = 1 - WSI: he so stress ap dung len Kc
+#
+# Tham khao: Allen et al. 1998, FAO-56 Table 11, 12, 22
+# ============================================================
+CROP_TOTAL_DAYS: int = 90      # Tong chu ky sinh truong (ngay mo phong)
+
+# Phan chia giai doan (% tong ngay, FAO-56 Table 11 - rau an la nhiet doi)
+CROP_PCT_INITIAL: float      = 0.20   # 20% dau: cay con
+CROP_PCT_DEVELOPMENT: float  = 0.30   # 30% tiep: phat trien
+CROP_PCT_MID: float          = 0.30   # 30% tiep: truong thanh
+# Cuoi mua = 1 - 0.20 - 0.30 - 0.30 = 0.20 (tu dong)
+
+# He so Kc (FAO-56 Table 12, rau an la / salad crops)
+CROP_KC_INI: float = 0.40   # Kc giai doan dau (mat dat thoang)
+CROP_KC_MID: float = 1.05   # Kc giua mua (thoat hoi nuoc max)
+CROP_KC_END: float = 0.55   # Kc cuoi mua (la rung, thu hoach)
+
+# Nguong do am dat (FAO AquaCrop)
+CROP_THETA_FC: float      = 65.0   # Field Capacity - suc chua dong ruong (%)
+CROP_THETA_WP: float      = 15.0   # Wilting Point - diem heo (%)
+CROP_P_DEPLETION: float   = 0.55   # Muc kiet nuoc cho phep truoc khi stress
+                                    # (p=0.55 cho rau, FAO-56 Table 22)
+
 WEATHER_EVENT_CHANCE        = 0.01
 WEATHER_RAIN_DURATION       = 2.0
 WEATHER_CLOUD_DURATION      = 3.0

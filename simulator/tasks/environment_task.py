@@ -1,7 +1,18 @@
 """
 Nha Kinh Thong Minh - Task Mo Phong Moi Truong
 =================================================
-NANG CAP v6.0 - Nutrient / EC / pH Model:
+NANG CAP v7.0 - FAO-56 Crop Model Integration:
+  [MỚI] Tích hợp mo hinh cay trong (CropModel) dua tren FAO-56:
+    - Kc (Crop Coefficient) thay doi theo 4 giai doan sinh truong
+    - WSI (Water Stress Index) lien ket do am dat voi thoat hoi nuoc
+    - Ks (Stress Coefficient) = 1 - WSI: dieu chinh ET va CO2 uptake
+    - Moisture decay khong con MOISTURE_DECAY_DAY co dinh,
+      ma phu thuoc Kc × Ks (cay truong thanh hut nuoc nhieu hon;
+      stress nuoc -> stomata dong -> giam thoat hoi nuoc)
+    - CO2 drop rate ban ngay phu thuoc Kc × Ks
+      (cay truong thanh quang hop manh hon; stress -> giam quang hop)
+
+NANG CAP v6.0 (giu nguyen):
   [1] EC (Electrical Conductivity):
       - Dilution khi tuoi: EC giam (pha loang muoi)
       - Concentration ban ngay: EC tang cham (bay hoi nuoc)
@@ -80,6 +91,7 @@ class EnvironmentTask(BaseTask):
 
         gh.update_sim_time()
         sim_hour = gh.get_sim_hour_float()
+        sim_day  = gh.get_sim_day()
         is_day   = gh.is_daytime()
         weather  = gh.get_weather()
 
@@ -100,10 +112,21 @@ class EnvironmentTask(BaseTask):
         dt_real   = max(0.01, min(dt_real, cfg.TASK_INTERVAL_ENVIRONMENT * 3))
         dt_factor = dt_real / cfg.TASK_INTERVAL_ENVIRONMENT
 
+        # ---------- v7.0: Cap nhat Crop Model ----------
+        light_norm = light / cfg.LIGHT_DAY_MAX if cfg.LIGHT_DAY_MAX > 0 else 0.0
+        crop = gh.update_crop_model(
+            sim_day=sim_day,
+            soil_moisture=gh.soil_moisture,
+            light_norm=light_norm,
+            temperature=gh.temperature,
+            is_day=is_day,
+            dt_factor=dt_factor,
+        )
+
         temperature = self._calc_temperature(sim_hour, is_day, weather, light, dt_factor)
-        moisture    = self._calc_moisture(is_day, weather, dt_factor, light, temperature)
+        moisture    = self._calc_moisture(is_day, weather, dt_factor, light, temperature, crop)
         humidity    = self._calc_humidity_magnus(is_day, weather, temperature, moisture)
-        co2         = self._calc_co2(sim_hour, is_day, light, temperature, dt_factor, weather)
+        co2         = self._calc_co2(sim_hour, is_day, light, temperature, dt_factor, weather, crop)
         ec          = self._calc_ec(is_day, weather, dt_factor, temperature)
         ph          = self._calc_ph(is_day, weather, dt_factor, co2)
 
@@ -126,6 +149,7 @@ class EnvironmentTask(BaseTask):
             f"M={moisture:.1f}% T={temperature:.1f}C "
             f"L={light:.0f}lux H={humidity:.1f}% "
             f"CO2={co2:.0f}ppm EC={ec:.2f}mS pH={ph:.2f} | "
+            f"Kc={crop.kc:.2f} WSI={crop.wsi:.2f} [{crop.stage_name_vn}] "
             f"Pump={'ON' if gh.is_pump_on() else 'OFF'}"
         )
 
@@ -211,27 +235,41 @@ class EnvironmentTask(BaseTask):
         light += random.gauss(0, cfg.LIGHT_NOISE)
         return max(0, light)
 
-    def _calc_moisture(self, is_day, weather, dt_factor, light, temperature):
+    def _calc_moisture(self, is_day, weather, dt_factor, light, temperature, crop):
         """
-        Tinh do am dat voi Leaf Transpiration model.
-        NANG CAP: Penman-Monteith simplified (anh sang + nhiet do)
+        Tinh do am dat voi Crop Model FAO-56.
+        NANG CAP v7.0:
+          - Decay (bay hoi + thoat hoi nuoc) dieu chinh boi Kc × Ks
+            thay vi dung MOISTURE_DECAY_DAY co dinh.
+          - Khi cay truong thanh (Kc cao): hut nuoc nhieu hon
+          - Khi stress nuoc (WSI cao): stomata dong, giam thoat hoi nuoc
+          - Ket qua: moisture, Kc, WSI phu thuoc nhau (feedback loop)
         """
         cfg      = self.config
         # FIX: Doc truc tiep gh.soil_moisture de tranh Quantization Error tu get_sensors lam tron
         moisture = self.greenhouse.soil_moisture
         soil     = self._soil
 
-        # 1. Bay hoi tu nhien
-        decay = cfg.MOISTURE_DECAY_DAY if is_day else cfg.MOISTURE_DECAY_NIGHT
-        moisture -= decay * dt_factor * soil["drainage_factor"]
+        # 1. Bay hoi tu nhien + thoat hoi nuoc (dieu chinh boi Crop Model)
+        #    Base decay: MOISTURE_DECAY_DAY/NIGHT la toc do bay hoi mat dat khi khong co cay
+        #    Kc × Ks: nhan len de tinh thoat hoi nuoc qua la cay
+        #    - Kc=0.4 (cay con): thoat hoi nuoc thap (~40% so voi ETref)
+        #    - Kc=1.05 (truong thanh): thoat hoi nuoc toi da
+        #    - Ks=0 (heo): stomata dong, chi con bay hoi mat dat
+        base_decay = cfg.MOISTURE_DECAY_DAY if is_day else cfg.MOISTURE_DECAY_NIGHT
+        crop_factor = crop.kc * crop.ks  # Kc × Ks
 
-        # 2. Thoat hoi nuoc la cay (Leaf Transpiration - Penman-Monteith simplified)
+        # Thanh phan 1: Bay hoi mat dat (khong phu thuoc cay, luon xay ra)
+        soil_evap = base_decay * 0.3 * dt_factor * soil["drainage_factor"]
+        # Thanh phan 2: Thoat hoi nuoc cay trong (phu thuoc Kc × Ks)
+        plant_evap = base_decay * 0.7 * crop_factor * dt_factor * soil["drainage_factor"]
+        moisture -= (soil_evap + plant_evap)
+
+        # 2. Thoat hoi nuoc la cay chi tiet (Penman-Monteith simplified, dieu chinh boi Ks)
+        #    v7.0: Transpiration rate da tinh san trong CropModel.update()
+        #    bao gom Ks × Kc × ET_ref(light, temperature)
         if is_day and light > 0:
-            transpiration_rate = (
-                (light / cfg.LIGHT_DAY_MAX) * 0.05
-                + max(0.0, (temperature - 20.0) / 100.0)
-            )
-            transpiration = transpiration_rate * dt_factor * soil["drainage_factor"]
+            transpiration = crop.et_crop * soil["drainage_factor"]
             moisture -= transpiration
             self._transpiration_acc += transpiration
 
@@ -288,18 +326,28 @@ class EnvironmentTask(BaseTask):
         rh += random.gauss(0, cfg.HUMIDITY_NOISE)
         return max(20.0, min(99.0, rh))
 
-    def _calc_co2(self, sim_hour, is_day, light, temperature, dt_factor, weather):
+    def _calc_co2(self, sim_hour, is_day, light, temperature, dt_factor, weather, crop):
+        """
+        Mo hinh CO2 voi Crop Model FAO-56.
+        NANG CAP v7.0:
+          - CO2 drop ban ngay (quang hop) dieu chinh boi Kc × Ks:
+            * Cay truong thanh (Kc cao): quang hop manh -> CO2 giam nhanh
+            * Stress nuoc (WSI cao): stomata dong -> quang hop giam -> CO2 giam cham
+          - Feedback: CO2 <-> moisture <-> transpiration phu thuoc nhau
+        """
         cfg     = self.config
         # FIX: Doc truc tiep gh.co2_level de tranh Quantization Error
         co2     = self.greenhouse.co2_level
 
         if is_day and light > 0:
-            drop_rate = (light / cfg.LIGHT_DAY_MAX) * 12.0 * dt_factor
+            # v7.0: CO2 uptake factor = Kc × Ks
+            co2_factor = crop.kc * crop.ks  # [0..~1.05]
+            # Base drop rate nhan voi crop factor
+            drop_rate = (light / cfg.LIGHT_DAY_MAX) * 12.0 * co2_factor * dt_factor
             co2 -= drop_rate
             co2  = max(250.0, co2)
         else:
             # FIX: CO2 ban dem phu thuoc vao nhiet do moi truong on dinh, khong bi giam dot ngot do nhiet do hien tai (mua lam mat)
-            # Vi sinh vat hoat dong tang khi troi mua ban dem
             base_t = (cfg.TEMP_DAY_BASE + cfg.TEMP_NIGHT_BASE) / 2.0
             rise_rate = (base_t / 20.0) * 4.0 * dt_factor
             
@@ -381,9 +429,9 @@ class EnvironmentTask(BaseTask):
              (Linearized tu phuong trinh carbonate: pH = pK1 - log[CO2/HCO3-])
           2. Tuoi nuoc: pH drift ve can bang (PH_EQUILIBRIUM = 6.8)
              Nuoc tuoi thong thuong co pH 6.5-7.5, pha loang acid/base
-          3. Mua acid nhe: pH mua do thi ~ 5.6 (CO2 khong khi)
+          3. Mua acid nhe: pH giam
           4. Vi sinh vat ban dem: tiet acid huu co -> pH giam nhe
-          5. Phan bon ammonium: nitrat hoa -> H+ -> pH giam rat cham
+          5. Phan bon ammonium: pH giam rat cham
           6. Spike cam bien (do bien dong ion cuc bo)
         """
         cfg = self.config

@@ -11,6 +11,7 @@ CHANGES:
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from models.crop_model import CropModel, CropState
 import logging
 import threading
 
@@ -124,6 +125,10 @@ class Greenhouse:
         self.ec_level = getattr(config, 'EC_INIT', 2.0)   # mS/cm
         self.ph_level = getattr(config, 'PH_INIT', 6.5)   # pH
 
+        # Mo hinh cay trong (v7.0 - FAO-56 Kc + WSI)
+        self.crop_model = CropModel(config)
+        self.crop_state = self.crop_model.state
+
         # Bom
         self.pump_on          = False
         self.pump_duty_cycle  = 0.0
@@ -212,6 +217,24 @@ class Greenhouse:
                 "ec_level":        round(self.ec_level, 2),
                 "ph_level":        round(self.ph_level, 2),
             }
+
+    # ---------- Crop Model ----------
+
+    def get_crop_state(self) -> Dict[str, Any]:
+        """Tra ve trang thai mo hinh cay trong (Kc, WSI, giai doan)."""
+        with self._lock:
+            return self.crop_state.to_dict()
+
+    def update_crop_model(self, sim_day: int, soil_moisture: float,
+                          light_norm: float, temperature: float,
+                          is_day: bool, dt_factor: float) -> CropState:
+        """Cap nhat mo hinh cay trong va tra ve trang thai moi."""
+        with self._lock:
+            self.crop_state = self.crop_model.update(
+                sim_day, soil_moisture, light_norm,
+                temperature, is_day, dt_factor
+            )
+            return self.crop_state
 
     # Whitelist cac truong cam bien duoc phep cap nhat qua set_sensors()
     _SENSOR_FIELDS = {
@@ -407,6 +430,7 @@ class Greenhouse:
                 "threshold":      self.moisture_threshold,
                 "weather":        self.weather.condition,
                 "ai_status":      self.ai_status,
+                "crop":           self.crop_state.to_dict(),
             }
 
     def get_internal_state(self) -> Dict[str, Any]:
@@ -431,6 +455,7 @@ class Greenhouse:
                 "alerts_fired": self.alerts_fired,
                 "pid_setpoint": self.pid_state.setpoint,
                 "watering_events_count": self.watering_events_count,
+                "crop_day": self.crop_state.crop_day,
             }
 
     def restore_internal_state(self, data: Dict[str, Any]) -> None:
@@ -455,6 +480,9 @@ class Greenhouse:
             self.alerts_fired = max(0, int(data.get("alerts_fired", self.alerts_fired)))
             self.watering_events_count = max(0, int(data.get("watering_events_count", self.watering_events_count)))
             self.pid_state.setpoint = max(10.0, min(80.0, data.get("pid_setpoint", self.pid_state.setpoint)))
+            # Crop model: khoi phuc ngay (giai doan tu tinh lai tu sim_day)
+            restored_crop_day = data.get("crop_day", self.crop_state.crop_day)
+            self.crop_state.crop_day = max(1, min(self.crop_state.total_days, restored_crop_day))
 
     # ---------- Thong ke ----------
 
