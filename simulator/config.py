@@ -30,12 +30,12 @@ MQTT_RETAIN    = False
 # ============================================================
 # Feeds MQTT
 # ============================================================
-FEED_SOIL_MOISTURE  = "soil-moisture"
-FEED_TEMPERATURE    = "temperature"
-FEED_LIGHT          = "light-intensity"
-FEED_HUMIDITY       = "humidity"
-FEED_CO2            = "co2-level"
-FEED_PUMP_STATUS    = "pump-status"
+FEED_SOIL_MOISTURE  = "soil-moisture"   # DEPRECATED: giu lai de tuong thich LWT
+FEED_TEMPERATURE    = "temperature"     # DEPRECATED: giu lai de backward compat
+FEED_LIGHT          = "light-intensity" # DEPRECATED
+FEED_HUMIDITY       = "humidity"        # DEPRECATED
+FEED_CO2            = "co2-level"       # DEPRECATED
+FEED_PUMP_STATUS    = "pump-status"     # Van dung cho LWT
 FEED_PUMP_CMD       = "pump-cmd"
 FEED_MODE           = "greenhouse-mode"
 FEED_THRESHOLD      = "moisture-threshold"
@@ -44,16 +44,25 @@ FEED_AI_CMD         = "ai-command"
 FEED_WATERING_EVENT = "watering-event"
 FEED_ALERT          = "alert-status"
 
+# NANG CAP v5.0: Batch publish - gom tat ca sensor vao 1 JSON
+# Tiet kiem: 9 feeds/cycle -> 2 feeds/cycle (sensor-data + ai-status)
+# Con lai 28 points/phut cho alerts va events
+FEED_SENSOR_DATA    = "sensor-data"
+
 def get_topic(feed_name):
     return f"{ADAFRUIT_USERNAME}/feeds/{feed_name}"
 
 # ============================================================
 # Rate Limiter (Adafruit IO Free: 30 data points / phut)
-# 9 feeds x (60/22s) = ~24.5/phut  -> an toan duoi 30
+# NANG CAP v5.0: Batch publish
+#   Truoc: 9 feeds x (60/22s) = ~24.5/phut (chat, chi con 5.5 cho alerts)
+#   Sau:   2 feeds (sensor-data + ai-status) x (60/5s) = ~24/phut
+#          Con lai ~6 points/phut cho alerts va events
+#   Burst guard 1.5s van giu -> thuc te safe hon ly thuyet
 # ============================================================
 RATE_LIMIT_POINTS_PER_MIN    = 30
-RATE_LIMIT_FEEDS_PER_PUBLISH = 9
-RATE_LIMIT_MIN_INTERVAL      = 22
+RATE_LIMIT_FEEDS_PER_PUBLISH = 2   # sensor-data + ai-status
+RATE_LIMIT_MIN_INTERVAL      = 5   # 2 feeds x 12/phut = 24/phut < 30
 
 # ============================================================
 # Thong so mo phong
@@ -116,6 +125,73 @@ CO2_NIGHT_RISE = 60.0
 CO2_NOISE      = 10.0
 CO2_MAX        = 1000.0
 
+# ============================================================
+# EC Model (Electrical Conductivity - do dan dien, mS/cm)
+#
+# Nguyen ly vat ly:
+#   - Tuoi nuoc -> pha loang muoi -> EC giam (dilution effect)
+#   - Bay hoi nuoc ban ngay -> muoi tap trung -> EC tang cham (concentration)
+#   - Mua -> EC giam nhanh (nuoc mua ~distilled, EC ~ 0)
+#   - Nhiet do cao -> EC do cao hon (2%/degC, chuan IEC 60746-3)
+#   - Phan bon -> EC tang theo thoi gian (simulation: tang rat cham)
+#
+# Range thuc te:
+#   Toi uu rau an la:  1.5 - 2.5 mS/cm
+#   Canh bao thap:     < 1.0 mS/cm  (thieu dinh duong)
+#   Canh bao cao:      > 3.0 mS/cm  (mat nuoc, cay stress)
+#   Nguy hiem:         > 3.5 mS/cm  (doc muoi)
+# ============================================================
+EC_INIT: float          = 2.0    # mS/cm khoi dong
+EC_MIN_CLAMP: float     = 0.3    # mS/cm thap nhat co the
+EC_MAX_CLAMP: float     = 4.5    # mS/cm cao nhat co the
+EC_OPT_LOW: float       = 1.5    # nguong toi uu (duoi)
+EC_OPT_HIGH: float      = 2.5    # nguong toi uu (tren)
+EC_WARN_LOW: float      = 1.0    # canh bao thieu dinh duong
+EC_WARN_HIGH: float     = 3.0    # canh bao mat nuoc / muoi
+EC_NOISE: float         = 0.05   # Gaussian noise cam bien (mS/cm)
+
+# Toc do thay doi EC (%/dt_factor, tinh tren EC hien tai)
+EC_DILUTION_RATE: float     = 0.04   # Giam % EC moi tick khi bom chay
+EC_CONCENTRATION_RATE: float = 0.003  # Tang % EC moi tick do bay hoi ban ngay
+EC_RAIN_DILUTION: float     = 0.08   # Giam % EC moi tick khi mua
+EC_FERTILIZER_RATE: float   = 0.0005 # Tang tuyet doi mS/cm moi tick (phan bon nen)
+EC_TEMP_COEFF: float        = 0.02   # 2%/degC, chuan IEC (ap dung khi hien thi)
+
+# ============================================================
+# pH Model
+#
+# Nguyen ly hoa hoc:
+#   - CO2 hoa tan vao nuoc -> H2CO3 (acid carbonic) -> giam pH
+#     pH = pKa1 - log([CO2]/[HCO3-]) ~ 8.3 - 0.008*CO2_ppm (linearized)
+#   - Tuoi nuoc -> pH drift ve trung tinh (7.0), pha loang acid/base
+#   - Mua acid nhe (pH mua ~ 5.6 o do thi) -> ha pH dat / dung dich
+#   - Phan bon ammonium (NH4+) -> nito hoa -> H+ -> giam pH theo thoi gian
+#   - Vi sinh vat hoat dong dem -> tiet acid huu co -> pH giam nhe
+#
+# Range thuc te:
+#   Toi uu hau het cay trong: 6.0 - 6.8
+#   Canh bao acid:   < 5.8  (khoa dinh duong sat, mangan)
+#   Canh bao kieu:   > 7.2  (khoa sat, keo, bo, mangan)
+#   Nguy hiem:       < 5.5 hoac > 7.5
+# ============================================================
+PH_INIT: float          = 6.5    # pH khoi dong
+PH_MIN_CLAMP: float     = 4.5    # pH thap nhat (cham du an toan)
+PH_MAX_CLAMP: float     = 8.5    # pH cao nhat
+PH_OPT_LOW: float       = 6.0    # nguong toi uu (duoi)
+PH_OPT_HIGH: float      = 6.8    # nguong toi uu (tren)
+PH_WARN_LOW: float      = 5.8    # canh bao acid
+PH_WARN_HIGH: float     = 7.2    # canh bao kiem
+PH_NOISE: float         = 0.03   # Gaussian noise cam bien pH
+
+# Cac he so mo hinh pH
+PH_CO2_SENSITIVITY: float   = 0.003  # DeltapH moi ppm CO2 vuot nguong 400ppm
+PH_CO2_BASELINE: float      = 400.0  # ppm CO2 tham chieu (pH baseline)
+PH_IRRIGATION_DRIFT: float  = 0.008  # Toc do pH drift ve 7.0 khi tuoi (moi tick)
+PH_RAIN_EFFECT: float       = 0.05   # pH giam moi tick khi mua (acid)
+PH_MICROBIAL_NIGHT: float   = 0.002  # pH giam ban dem (vi sinh vat + CO2 dat)
+PH_FERTILIZER_ACIDIFY: float = 0.0003 # pH giam rat cham do phan bon ammonium
+PH_EQUILIBRIUM: float       = 6.8    # pH can bang tu nhien dat nha kinh
+
 WEATHER_EVENT_CHANCE        = 0.01
 WEATHER_RAIN_DURATION       = 2.0
 WEATHER_CLOUD_DURATION      = 3.0
@@ -161,13 +237,21 @@ ALERT_MAX_HISTORY = 200
 SCHEDULER_TICK             = 0.1
 TASK_INTERVAL_ENVIRONMENT  = 5
 TASK_INTERVAL_PUMP         = 3
-TASK_INTERVAL_MQTT         = 22   # = RATE_LIMIT_MIN_INTERVAL
+TASK_INTERVAL_MQTT         = 5    # = RATE_LIMIT_MIN_INTERVAL (batch: 2 feeds/cycle)
 TASK_INTERVAL_AI           = 30
 TASK_INTERVAL_ALERT        = 5
 TASK_INTERVAL_PERSISTENCE  = 30
 
 WATCHDOG_ENABLED = True
 WATCHDOG_TIMEOUT = 10.0
+
+# ============================================================
+# REST API + WebSocket Server (nang cap v4.0)
+# Thay the HealthCheckTask bang APIServerTask
+# Dashboard co the hoat dong OFFLINE hoan toan qua local API
+# ============================================================
+API_PORT              = 8080   # Port cho FastAPI + WebSocket
+WS_BROADCAST_INTERVAL = 2.0    # Push WebSocket moi N giay
 
 
 def validate():

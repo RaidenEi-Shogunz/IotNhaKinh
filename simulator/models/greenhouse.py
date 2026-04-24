@@ -120,6 +120,10 @@ class Greenhouse:
         self.co2_level         = 450.0
         self.prev_temperature  = 25.0
 
+        # Cam bien dinh duong / hoa hoc (v6.0)
+        self.ec_level = getattr(config, 'EC_INIT', 2.0)   # mS/cm
+        self.ph_level = getattr(config, 'PH_INIT', 6.5)   # pH
+
         # Bom
         self.pump_on          = False
         self.pump_duty_cycle  = 0.0
@@ -205,12 +209,15 @@ class Greenhouse:
                 "light_intensity": round(self.light_intensity, 0),
                 "humidity":        round(self.humidity, 1),
                 "co2_level":       round(self.co2_level, 0),
+                "ec_level":        round(self.ec_level, 2),
+                "ph_level":        round(self.ph_level, 2),
             }
 
     # Whitelist cac truong cam bien duoc phep cap nhat qua set_sensors()
     _SENSOR_FIELDS = {
         'soil_moisture', 'temperature', 'light_intensity',
         'humidity', 'co2_level', 'prev_temperature',
+        'ec_level', 'ph_level',
     }
 
     def set_sensors(self, **kwargs: Any) -> None:
@@ -392,6 +399,8 @@ class Greenhouse:
                 "light_intensity": round(self.light_intensity, 0),
                 "humidity":       round(self.humidity, 1),
                 "co2_level":      round(self.co2_level, 0),
+                "ec_level":       round(self.ec_level, 2),
+                "ph_level":       round(self.ph_level, 2),
                 "pump_on":        self.pump_on,
                 "pump_duty":      round(self.pump_duty_cycle, 1),
                 "mode":           self.mode,
@@ -410,6 +419,8 @@ class Greenhouse:
                 "light_intensity": self.light_intensity,
                 "humidity": self.humidity,
                 "co2_level": self.co2_level,
+                "ec_level": self.ec_level,
+                "ph_level": self.ph_level,
                 "pump_on": self.pump_on,
                 "pump_duty_cycle": self.pump_duty_cycle,
                 "total_water_used": self.total_water_used,
@@ -431,6 +442,8 @@ class Greenhouse:
             self.light_intensity = max(0.0, min(100000.0, data.get("light_intensity", self.light_intensity)))
             self.humidity = max(0.0, min(100.0, data.get("humidity", self.humidity)))
             self.co2_level = max(0.0, min(5000.0, data.get("co2_level", self.co2_level)))
+            self.ec_level = max(0.0, min(10.0, data.get("ec_level", self.ec_level)))
+            self.ph_level = max(0.0, min(14.0, data.get("ph_level", self.ph_level)))
             self.pump_on = bool(data.get("pump_on", False))
             self.pump_duty_cycle = max(0.0, min(100.0, data.get("pump_duty_cycle", 0.0)))
             self.total_water_used = max(0.0, data.get("total_water_used", self.total_water_used))

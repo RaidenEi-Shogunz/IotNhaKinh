@@ -3,7 +3,8 @@ export const CONFIG = {
     key:      '', // FIX: Khong luu API Key vao sessionStorage de chong XSS (chi luu in-memory)
     mqttUrl: 'wss://io.adafruit.com/mqtt',
     feeds: {
-        moisture:      'soil-moisture',
+        sensorData:    'sensor-data',    // v5.0: batch feed (moisture+temp+light+humidity+co2+pump)
+        moisture:      'soil-moisture',  // legacy: van subscribe de backward compat
         temperature:   'temperature',
         light:         'light-intensity',
         humidity:      'humidity',

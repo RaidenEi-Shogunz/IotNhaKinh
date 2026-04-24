@@ -3,3 +3,7 @@ python-dotenv>=1.0.0
 pytest>=7.0.0
 black>=23.0.0
 flake8>=6.0.0
+
+# Nang cap v4.0: REST API + WebSocket local
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0

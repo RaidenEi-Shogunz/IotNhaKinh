@@ -724,3 +724,98 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .ai-recommendation-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 .log-table-container { max-height: 280px; overflow-y: auto; }
 
+
+/* ================================================================
+   Local API Badge - Nang cap v4.0
+   ================================================================ */
+.local-badge {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 0.3s, color 0.3s;
+    user-select: none;
+}
+.local-badge.online {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.local-badge.offline {
+    background: rgba(100, 116, 139, 0.12);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+/* ================================================================
+   Chart Nâng cấp v4.1 — Annotation + Zoom + Dual-axis Overlay
+   ================================================================ */
+
+/* Overlay chart container */
+.overlay-chart-container {
+    height: 220px;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+/* Gợi ý thao tác zoom / pan */
+.chart-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 2px 0 6px 2px;
+    letter-spacing: 0.01em;
+}
+.hint-green { color: #10b981; font-weight: 600; }
+
+/* Nút Reset Zoom — ẩn mặc định, hiện khi đã zoom */
+.btn-reset-zoom {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--panel-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    font-weight: 500;
+}
+.btn-reset-zoom:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.btn-reset-zoom.hidden { display: none; }
+
+/* panel-header flex layout để chứa cả title + reset button */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 0.5rem;
+}
+.panel-header h2 { margin-bottom: 0; }
+
+/* Local API Badge (từ nâng cấp v4.0) */
+.local-badge {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 0.3s, color 0.3s;
+    user-select: none;
+}
+.local-badge.online {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.local-badge.offline {
+    background: rgba(100, 116, 139, 0.10);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}

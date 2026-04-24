@@ -4,7 +4,7 @@ import {
     updateModeDisplay, updatePIDDisplay, updateAIDisplay,
     addWateringLogFromEvent, addAlert, syncSimClock
 } from './uiController.js';
-import { addHistory, loadBulkHistory } from './chartManager.js';
+import { addHistory, loadBulkHistory, addPumpAnnotation } from './chartManager.js';
 import { escapeHtml } from './utils.js';
 
 let client = null;
@@ -58,8 +58,10 @@ export function connectMQTT() {
         // FIX Bug An 11: Race condition - Bo qua message real-time cua sensor neu lich su chua load xong.
         // Ngan chan viec updateChart bi goi xen ngang, gay lap du lieu hoac sai thu tu thoi gian.
         if (!historyLoaded) {
-            const isSensorFeed = Object.values(CONFIG.feeds).includes(feed) && 
-                                 ['moisture', 'temperature', 'light', 'humidity', 'co2'].some(s => CONFIG.feeds[s] === feed);
+            // v5.0: sensorData la batch feed chinh; cac feed sensor rieng giu lai de backward compat
+            const isSensorFeed = feed === f.sensorData ||
+                (Object.values(CONFIG.feeds).includes(feed) &&
+                 ['moisture', 'temperature', 'light', 'humidity', 'co2'].some(s => CONFIG.feeds[s] === feed));
             if (isSensorFeed) {
                 console.log(`[MQTT] Bo qua message cua ${feed} do lich su chua load xong (chong Race Condition)`);
                 return;
@@ -96,7 +98,28 @@ function handleMessage(feed, payload) {
     const f         = CONFIG.feeds;
     const timestamp = new Date().toLocaleTimeString('vi-VN');
 
-    if (feed === f.moisture) {
+    if (feed === f.sensorData) {
+        // NANG CAP v5.0: Batch feed - giai ma 1 JSON thay vi 6 feeds rieng
+        try {
+            const d = JSON.parse(payload);
+            if (typeof d !== 'object' || d === null) throw new Error('Invalid sensor-data payload');
+            if (d.soil_moisture  != null) { const v = parseFloat(d.soil_moisture);  if (!isNaN(v)) { updateGauge('moisture',    v); addHistory('moisture',    v, timestamp); } }
+            if (d.temperature    != null) { const v = parseFloat(d.temperature);    if (!isNaN(v)) { updateGauge('temperature', v); addHistory('temperature', v, timestamp); } }
+            if (d.light_intensity != null){ const v = parseFloat(d.light_intensity); if (!isNaN(v)) { updateGauge('light',       v); addHistory('light',       v, timestamp); } }
+            if (d.humidity       != null) { const v = parseFloat(d.humidity);       if (!isNaN(v)) { updateGauge('humidity',    v); addHistory('humidity',    v, timestamp); } }
+            if (d.co2_level      != null) { const v = parseFloat(d.co2_level);      if (!isNaN(v)) { updateGauge('co2',         v); addHistory('co2',         v, timestamp); } }
+            if (d.ec_level       != null) { const v = parseFloat(d.ec_level);       if (!isNaN(v)) { updateGauge('ec',          v); addHistory('ec',          v, timestamp); } }
+            if (d.ph_level       != null) { const v = parseFloat(d.ph_level);       if (!isNaN(v)) { updateGauge('ph',          v); addHistory('ph',          v, timestamp); } }
+            if (d.pump_status    != null) {
+                const on = d.pump_status.toUpperCase() === 'ON';
+                if (state.pumpOn !== on) addPumpAnnotation(on ? 'ON' : 'OFF', timestamp);
+                state.pumpOn = on;
+                updatePumpDisplay(on);
+            }
+        } catch (e) {
+            console.warn('[MQTT] Loi parse sensor-data:', e);
+        }
+    } else if (feed === f.moisture) {
         const v = parseFloat(payload);
         if (!isNaN(v)) { updateGauge('moisture', v); addHistory('moisture', v, timestamp); }
     } else if (feed === f.temperature) {
@@ -113,6 +136,7 @@ function handleMessage(feed, payload) {
         if (!isNaN(v)) { updateGauge('co2', v); addHistory('co2', v, timestamp); }
     } else if (feed === f.pumpStatus) {
         const on = payload.toUpperCase() === 'ON';
+        if (state.pumpOn !== on) addPumpAnnotation(on ? 'ON' : 'OFF', timestamp);
         state.pumpOn = on;
         updatePumpDisplay(on);
     } else if (feed === f.mode) {
@@ -142,6 +166,7 @@ function handleMessage(feed, payload) {
             }
             addWateringLogFromEvent(event);
             const on = event.action === 'ON';
+            addPumpAnnotation(on ? 'ON' : 'OFF', timestamp);
             state.pumpOn = on;
             updatePumpDisplay(on);
         } catch (e) {
@@ -178,9 +203,66 @@ async function fetchHistoricalDataParallel() {
     const baseUrl = `https://io.adafruit.com/api/v2/${CONFIG.username}/feeds`;
     const headers = { 'X-AIO-Key': CONFIG.key };
 
+    // v5.0: Load lich su tu feed batch "sensor-data" thay vi 5 feeds rieng
+    // Moi data point la 1 JSON chua tat ca sensor -> giai ma va phan phoi
+    const sensorKeys = ['soil_moisture', 'temperature', 'light_intensity', 'humidity', 'co2_level', 'ec_level', 'ph_level'];
+    const sensorMap  = {
+        soil_moisture:   'moisture',
+        temperature:     'temperature',
+        light_intensity: 'light',
+        humidity:        'humidity',
+        co2_level:       'co2',
+        ec_level:        'ec',
+        ph_level:        'ph',
+    };
+    const feedKey  = CONFIG.feeds.sensorData;
+    const cacheKey = `aio_cache_${feedKey}`;
+    const cached   = sessionStorage.getItem(cacheKey);
+    const cacheTime = sessionStorage.getItem(`${cacheKey}_time`);
+
+    let rawData = null;
+    if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 60000) {
+        rawData = JSON.parse(cached);
+    }
+    if (!rawData) {
+        try {
+            const res = await fetch(`${baseUrl}/${feedKey}/data?limit=30`, { headers });
+            if (res.status === 429) { console.error('[REST] Rate Limit (429) tai sensor-data!'); }
+            else if (res.ok) {
+                rawData = await res.json();
+                sessionStorage.setItem(cacheKey, JSON.stringify(rawData));
+                sessionStorage.setItem(`${cacheKey}_time`, Date.now().toString());
+            }
+        } catch (e) { console.warn('[REST] Loi load lich su sensor-data:', e); }
+    }
+
+    if (rawData && Array.isArray(rawData)) {
+        // Moi item la 1 JSON string -> giai ma va phan phoi ra tung sensor
+        const buckets = Object.fromEntries(sensorKeys.map(k => [k, []]));
+        rawData.slice().reverse().forEach(pt => {
+            try {
+                const d   = JSON.parse(pt.value);
+                const ts  = new Date(pt.created_at).toLocaleTimeString('vi-VN');
+                sensorKeys.forEach(k => {
+                    const v = parseFloat(d[k]);
+                    if (!isNaN(v)) buckets[k].push({ value: v, time: ts });
+                });
+            } catch (_) {}
+        });
+        sensorKeys.forEach(k => {
+            const uiKey = sensorMap[k];
+            if (buckets[k].length > 0) {
+                loadBulkHistory(uiKey, buckets[k]);
+                updateGauge(uiKey, buckets[k][buckets[k].length - 1].value);
+            }
+        });
+    }
+
+    // Fallback: van load 5 feed rieng neu sensor-data chua co data
+    // (su dung trong giai doan chuyen doi hoac khi deploy len server moi)
     const sensors = ['moisture', 'temperature', 'light', 'humidity', 'co2'];
     
-    console.log('[REST] Đang load data lịch sử (song song) kèm Session Caching...');
+    console.log('[REST] Đang load data lịch sử fallback (song song)...');
     
     const fetchPromises = sensors.map(async (sensor) => {
         const feedKey = CONFIG.feeds[sensor];

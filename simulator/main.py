@@ -35,7 +35,7 @@ from tasks.mqtt_task import MQTTTask
 from tasks.ai_task import AITask
 from tasks.alert_task import AlertTask
 from tasks.persistence_task import PersistenceTask
-from tasks.health_task import HealthCheckTask
+from tasks.api_task import APIServerTask
 
 
 BANNER = r"""
@@ -92,7 +92,7 @@ def main():
     for line in BANNER.strip().split("\n"):
         logger.info(line)
     logger.info("")
-    logger.info("  IoT Smart Agriculture Simulation System v2.2")
+    logger.info("  IoT Smart Agriculture Simulation System v4.0")
     logger.info("=" * 60)
 
     logger.info(f"  MQTT Broker:    {config.MQTT_HOST}:{config.MQTT_PORT}")
@@ -104,6 +104,7 @@ def main():
     logger.info(f"  Time Scale:     1 phut thuc = {config.TIME_SCALE} phut mo phong")
     logger.info(f"  Nguong do am:   {config.MOISTURE_LOW}% - {config.MOISTURE_HIGH}%")
     logger.info(f"  Rain suppress:  intensity >= {config.WEATHER_RAIN_PUMP_THRESHOLD}")
+    logger.info(f"  API Port:       {config.API_PORT} (REST + WebSocket)")
     logger.info("=" * 60)
     logger.info("")
 
@@ -124,8 +125,8 @@ def main():
     ai_task          = AITask(greenhouse, config)
     alert_task       = AlertTask(greenhouse, config)
     persistence_task = PersistenceTask(greenhouse, config)
-    health_task      = HealthCheckTask(greenhouse, port=8080)
-    logger.info("[OK] 7 tasks da tao xong")
+    api_task         = APIServerTask(greenhouse, config, db_path=config.DB_PATH)
+    logger.info("[OK] 7 tasks da tao xong (HealthCheck -> APIServerTask)")
 
     # 3. MQTT connect
     mqtt_task.connect()
@@ -168,8 +169,8 @@ def main():
         interval=config.TASK_INTERVAL_PERSISTENCE,  priority=2,
     )
     scheduler.register_task(
-        "Health",    health_task.run,
-        interval=1.0,                               priority=1,
+        "API",       api_task.run,
+        interval=config.WS_BROADCAST_INTERVAL,      priority=1,
     )
 
     def on_task_error(name, error):
@@ -198,7 +199,7 @@ def main():
         scheduler.stop()
         mqtt_task.shutdown()
         persistence_task.shutdown()
-        health_task.shutdown()
+        api_task.shutdown()
         
         # Luu Snapshot truoc khi thoat (qua StateManager)
         state_manager.save()

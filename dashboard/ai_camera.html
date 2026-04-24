@@ -3,281 +3,1738 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>AI Camera - Teachable Machine</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Camera — Nhà Kính Thông Minh</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
     <style>
-        body {
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
+        :root {
+            --bg: #080e1a;
+            --bg2: #0d1728;
+            --bg3: #111f35;
+            --surface: rgba(15, 30, 55, 0.85);
+            --border: rgba(0, 200, 170, 0.12);
+            --border-glow: rgba(0, 200, 170, 0.35);
+            --accent: #00e5b8;
+            --accent2: #7b5bf6;
+            --accent3: #f59c1a;
+            --danger: #ff4b6e;
+            --ok: #00e5b8;
+            --warn: #f59c1a;
+            --text: #dde6f0;
+            --text-dim: #6b7fa3;
+            --text-bright: #fff;
+            --font: 'Space Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --radius: 16px;
+            --shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
         }
 
-        #webcam-container {
-            margin: 20px 0;
-            border: 3px solid var(--color-primary);
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0, 229, 184, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 229, 184, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.04) 0px, rgba(0, 0, 0, 0.04) 1px, transparent 1px, transparent 3px);
+            pointer-events: none;
+            z-index: 0
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.8rem;
+            padding-bottom: 1.2rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            transition: all 0.2s;
+            letter-spacing: 0.3px
+        }
+
+        .back-btn:hover {
+            color: var(--accent);
+            border-color: var(--border-glow)
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #00e5b8, #7b5bf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 0 20px rgba(0, 229, 184, 0.3)
+        }
+
+        .brand-name {
+            font-size: 1.15rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00e5b8, #7b5bf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .brand-sub {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            letter-spacing: 1px;
+            text-transform: uppercase
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-family: var(--mono);
+            letter-spacing: 0.5px
+        }
+
+        .badge-version {
+            background: rgba(0, 229, 184, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 184, 0.2)
+        }
+
+        .badge-tf {
+            background: rgba(255, 140, 0, 0.1);
+            color: #ff8c00;
+            border: 1px solid rgba(255, 140, 0, 0.2)
+        }
+
+        /* TABS */
+        .mode-tabs {
+            display: flex;
+            gap: 0;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 1.5rem;
+            max-width: 420px
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 9px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 229, 184, 0.2), rgba(123, 91, 246, 0.2));
+            color: var(--accent);
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 0 20px rgba(0, 229, 184, 0.08)
+        }
+
+        /* GRID */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 1.2rem
+        }
+
+        @media(max-width:900px) {
+            .main-grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        /* CARD */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 184, 0.3), transparent)
+        }
+
+        .card-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.7rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 7px
+        }
+
+        .card-title span {
+            color: var(--accent)
+        }
+
+        /* CAMERA WRAP */
+        .camera-wrap {
+            position: relative;
             border-radius: 12px;
             overflow: hidden;
             background: #000;
-            min-width: 400px;
-            min-height: 400px;
+            aspect-ratio: 4/3;
+            max-height: 380px;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0, 229, 184, 0.1)
         }
 
-        .control-panel {
-            background: var(--bg-card);
-            padding: 20px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 500px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        .camera-wrap canvas,
+        .camera-wrap video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover
         }
 
-        #label-container div {
-            margin: 10px 0;
-            font-size: 1.1rem;
-        }
-
-        .label-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            background: var(--bg-main);
-            border-radius: 5px;
-            height: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: var(--color-primary);
-            transition: width 0.2s ease-out;
-        }
-
-        .status {
-            margin-top: 15px;
-            font-weight: 600;
-            color: var(--color-moisture);
+        .cam-placeholder {
+            color: var(--text-dim);
             text-align: center;
-            font-size: 1.1rem;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem
         }
 
-        input[type="text"] {
-            background: var(--bg-main);
-            border: 1px solid #444;
+        .cam-placeholder .big-icon {
+            font-size: 3.5rem;
+            opacity: 0.4
+        }
+
+        .cam-placeholder p {
+            font-size: 0.85rem
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            font-family: var(--mono);
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            z-index: 5
+        }
+
+        .live-on {
+            background: rgba(239, 68, 68, 0.9);
             color: #fff;
+            animation: blink 1.5s infinite
+        }
+
+        .live-off {
+            background: rgba(100, 100, 120, 0.7);
+            color: #aaa
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.5
+            }
+        }
+
+        .analysis-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            font-weight: 600;
+            color: var(--accent);
+            background: rgba(0, 0, 0, 0.65);
+            padding: 3px 8px;
             border-radius: 6px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+            letter-spacing: 0.5px
+        }
+
+        .analysis-indicator.show {
+            opacity: 1
+        }
+
+        /* UPLOAD AREA */
+        .upload-area {
+            border: 2px dashed rgba(0, 229, 184, 0.2);
+            border-radius: 12px;
+            aspect-ratio: 4/3;
+            max-height: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(0, 229, 184, 0.02);
+            position: relative;
+            overflow: hidden
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 229, 184, 0.06);
+            box-shadow: 0 0 30px rgba(0, 229, 184, 0.1) inset
+        }
+
+        .upload-area .up-icon {
+            font-size: 3rem;
+            opacity: 0.5
+        }
+
+        .upload-area p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-align: center;
+            line-height: 1.5
+        }
+
+        .upload-area .up-hint {
+            font-size: 0.72rem;
+            color: rgba(0, 229, 184, 0.5);
+            font-family: var(--mono)
+        }
+
+        #upload-preview {
+            position: absolute;
+            inset: 0;
+            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            display: none;
+            border-radius: 10px
+        }
+
+        #file-input {
+            display: none
+        }
+
+        .analyze-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            backdrop-filter: blur(2px)
+        }
+
+        .analyze-overlay.show {
+            display: flex
+        }
+
+        .analyze-btn-big {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #00e5b8, #0891b2);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-family: var(--font);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(0, 200, 160, 0.5);
+            transition: transform 0.15s
+        }
+
+        .analyze-btn-big:hover {
+            transform: scale(1.04)
+        }
+
+        /* OFF-TOPIC ALERT */
+        .offtopic-alert {
+            display: none;
+            margin-top: 0.8rem;
+            padding: 0.9rem 1rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(255, 75, 110, 0.08), rgba(245, 158, 26, 0.08));
+            border: 1px solid rgba(255, 75, 110, 0.3);
+            animation: slide-down 0.3s ease
+        }
+
+        .offtopic-alert.show {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.7rem
+        }
+
+        @keyframes slide-down {
+            from {
+                opacity: 0;
+                transform: translateY(-6px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .ot-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0
+        }
+
+        .ot-text {
+            font-size: 0.8rem;
+            line-height: 1.5
+        }
+
+        .ot-title {
+            font-weight: 700;
+            color: var(--danger);
+            margin-bottom: 2px
+        }
+
+        .ot-desc {
+            color: var(--text-dim)
+        }
+
+        /* BUTTONS */
+        .actions {
+            display: flex;
+            gap: 0.7rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--font);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed
         }
 
         .btn-primary {
+            background: linear-gradient(135deg, #00c9a0, #0891b2);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(0, 200, 160, 0.3)
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(0, 200, 160, 0.4)
+        }
+
+        .btn-danger {
+            background: rgba(255, 75, 110, 0.12);
+            color: var(--danger);
+            border: 1px solid rgba(255, 75, 110, 0.25)
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(255, 75, 110, 0.2)
+        }
+
+        .btn-upload {
+            background: linear-gradient(135deg, rgba(123, 91, 246, 0.3), rgba(0, 229, 184, 0.2));
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 184, 0.2)
+        }
+
+        .btn-upload:hover:not(:disabled) {
+            transform: translateY(-1px)
+        }
+
+        /* CONFIG */
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.7rem;
+            margin-bottom: 0.8rem
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        .form-field.full {
+            grid-column: 1/-1
+        }
+
+        .form-field label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.8px
+        }
+
+        .form-field input {
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            transition: border-color 0.2s
+        }
+
+        .form-field input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0, 229, 184, 0.1)
+        }
+
+        /* MQTT BADGE */
+        .mqtt-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: var(--mono);
+            transition: all 0.3s
+        }
+
+        .mqtt-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .s-wait {
+            background: rgba(245, 158, 26, 0.1);
+            color: var(--warn)
+        }
+
+        .s-wait .dot {
+            background: var(--warn);
+            animation: pulse-dot 1.5s infinite
+        }
+
+        .s-ok {
+            background: rgba(0, 229, 184, 0.1);
+            color: var(--ok)
+        }
+
+        .s-ok .dot {
+            background: var(--ok)
+        }
+
+        .s-err {
+            background: rgba(255, 75, 110, 0.1);
+            color: var(--danger)
+        }
+
+        .s-err .dot {
+            background: var(--danger)
+        }
+
+        .s-send {
+            background: rgba(123, 91, 246, 0.1);
+            color: #a78bfa
+        }
+
+        .s-send .dot {
+            background: #a78bfa
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.3
+            }
+        }
+
+        /* RIGHT COL */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem
+        }
+
+        /* CONFIDENCE RING */
+        .ring-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem
+        }
+
+        .ring-svg-wrap {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            flex-shrink: 0
+        }
+
+        .ring-svg-wrap svg {
             width: 100%;
-            margin-top: 15px;
+            height: 100%;
+            transform: rotate(-90deg)
+        }
+
+        .ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.06);
+            stroke-width: 9
+        }
+
+        .ring-fg {
+            fill: none;
+            stroke-width: 9;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s cubic-bezier(.4, 0, .2, 1), stroke 0.3s
+        }
+
+        .ring-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center
+        }
+
+        .ring-pct {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1
+        }
+
+        .ring-lbl {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+            font-family: var(--mono)
+        }
+
+        .ring-info {
+            flex: 1
+        }
+
+        .best-class-label {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            min-height: 1.4em;
+            transition: color 0.3s
+        }
+
+        .entropy-bar-wrap {
+            margin-top: 6px
+        }
+
+        .entropy-lbl {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            margin-bottom: 3px
+        }
+
+        .entropy-bar-bg {
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden
+        }
+
+        .entropy-bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease, background 0.3s
+        }
+
+        /* PRED BARS */
+        .pred-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem
+        }
+
+        .pred-item {
+            padding: 0.55rem 0.7rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            transition: all 0.25s
+        }
+
+        .pred-item.top {
+            background: rgba(0, 229, 184, 0.07);
+            border-color: rgba(0, 229, 184, 0.2)
+        }
+
+        .pred-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.8rem
+        }
+
+        .pred-name {
+            font-weight: 600
+        }
+
+        .pred-pct {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text-dim)
+        }
+
+        .pred-item.top .pred-pct {
+            color: var(--accent)
+        }
+
+        .bar-bg {
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.05);
+            overflow: hidden
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            background: linear-gradient(90deg, #00c9a0, #7b5bf6)
+        }
+
+        .pred-item.top .bar-fill {
+            background: linear-gradient(90deg, #00e5b8, #0ea5e9)
+        }
+
+        /* RECOMMENDATION */
+        .rec-box {
+            padding: 0.9rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            line-height: 1.55;
+            min-height: 60px;
+            transition: all 0.3s;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-dim)
+        }
+
+        .rec-good {
+            background: rgba(0, 229, 184, 0.07);
+            border-color: rgba(0, 229, 184, 0.2);
+            color: var(--text)
+        }
+
+        .rec-warn {
+            background: rgba(245, 158, 26, 0.07);
+            border-color: rgba(245, 158, 26, 0.2);
+            color: var(--text)
+        }
+
+        .rec-bad {
+            background: rgba(255, 75, 110, 0.07);
+            border-color: rgba(255, 75, 110, 0.2);
+            color: var(--text)
+        }
+
+        .rec-info {
+            background: rgba(123, 91, 246, 0.07);
+            border-color: rgba(123, 91, 246, 0.2);
+            color: var(--text)
+        }
+
+        /* SP EFFECT */
+        .sp-effect {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-family: var(--mono);
+            margin-top: 0.5rem;
+            background: rgba(123, 91, 246, 0.08);
+            border: 1px solid rgba(123, 91, 246, 0.15);
+            color: #a78bfa;
+            min-height: 32px;
+            transition: all 0.3s;
+            opacity: 0
+        }
+
+        .sp-effect.show {
+            opacity: 1
+        }
+
+        /* HISTORY */
+        .history-scroll {
+            max-height: 220px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--bg3) transparent
+        }
+
+        .hist-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.75rem
+        }
+
+        .hist-item:last-child {
+            border-bottom: none
+        }
+
+        .hist-time {
+            color: var(--text-dim);
+            font-family: var(--mono);
+            flex-shrink: 0;
+            min-width: 58px
+        }
+
+        .hist-mode {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+            font-family: var(--mono)
+        }
+
+        .hist-cls {
+            font-weight: 600;
+            flex: 1
+        }
+
+        .hist-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            font-family: var(--mono)
+        }
+
+        .hb-high {
+            background: rgba(0, 229, 184, 0.15);
+            color: var(--ok)
+        }
+
+        .hb-mid {
+            background: rgba(245, 158, 26, 0.15);
+            color: var(--warn)
+        }
+
+        .hb-low {
+            background: rgba(255, 75, 110, 0.15);
+            color: var(--danger)
+        }
+
+        .hb-ot {
+            background: rgba(150, 150, 150, 0.1);
+            color: #888
+        }
+
+        .empty-hist {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.8rem
+        }
+
+        /* COOLDOWN */
+        .cooldown-wrap {
+            margin-top: 0.5rem;
+            display: none
+        }
+
+        .cooldown-wrap.show {
+            display: block
+        }
+
+        .cooldown-lbl {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            margin-bottom: 3px
+        }
+
+        .cooldown-bar-bg {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            overflow: hidden
+        }
+
+        .cooldown-bar {
+            height: 100%;
+            background: var(--accent2);
+            transition: width 1s linear;
+            border-radius: 2px
+        }
+
+        /* STATS */
+        .stats-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 0.5rem
+        }
+
+        .stat-pill {
+            flex: 1;
+            text-align: center;
+            padding: 7px 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px
+        }
+
+        .stat-pill .val {
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: var(--mono);
+            color: var(--accent)
+        }
+
+        .stat-pill .lbl {
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 1px
+        }
+
+        /* SPINNER */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        /* TOAST */
+        #toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--bg3);
+            border: 1px solid var(--border-glow);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 999;
+            max-width: 280px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5)
+        }
+
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0)
+            }
+
+            25% {
+                transform: translateX(-6px)
+            }
+
+            75% {
+                transform: translateX(6px)
+            }
+        }
+
+        .shake {
+            animation: shake 0.35s ease-in-out
         }
     </style>
 </head>
 
 <body>
-    <h1 style="text-align: center; margin-bottom: 5px;">🤖 Camera Nhận Diện Cây</h1>
-    <p style="color: var(--text-muted); text-align: center; margin-bottom: 20px;">Sử dụng Google Teachable Machine để
-        đánh giá và gửi kết quả về Hệ thống giả lập (MQTT).</p>
+    <div class="container">
 
-    <div class="control-panel">
-        <div style="margin-bottom: 15px;">
-            <label style="font-size: 0.9rem; font-weight: 600;">Adafruit IO Username:</label>
-            <input type="text" id="aio-user" style="width: 100%; padding: 10px; margin-top: 5px;"
-                placeholder="Ví dụ: myusername">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-left">
+                <a href="index.html" class="back-btn">← Dashboard</a>
+                <div class="brand">
+                    <div class="brand-icon">🌿</div>
+                    <div>
+                        <div class="brand-name">AI Nhận Diện Cây Trồng</div>
+                        <div class="brand-sub">Nhà Kính Thông Minh · Google Teachable Machine</div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge badge-tf">TF.js v4</span>
+                <span class="badge badge-version">v5.0</span>
+            </div>
         </div>
-        <div style="margin-bottom: 15px;">
-            <label style="font-size: 0.9rem; font-weight: 600;">Adafruit IO Key:</label>
-            <input type="password" id="aio-key"
-                style="width: 100%; padding: 10px; margin-top: 5px; background: var(--bg-main); border: 1px solid #444; color: #fff; border-radius: 6px;"
-                placeholder="aio_xxxxxxxxxxxxxxx">
-        </div>
-        <div>
-            <label style="font-size: 0.9rem; font-weight: 600;">Link Model Teachable Machine:</label>
-            <input type="text" id="model-url" style="width: 100%; padding: 10px; margin-top: 5px;"
-                value="https://teachablemachine.withgoogle.com/models/hFjVe1EyC/">
-            <small style="color: var(--text-muted); display: block; margin-top: 5px;">* Chú ý: URL Model bắt buộc phải
-                có dấu / ở cuối.</small>
-        </div>
-        <button id="btn-start" class="btn-primary" onclick="init()">Bật Camera & Bắt Đầu Nhận Diện</button>
-    </div>
 
-    <div id="webcam-container">
-        <span style="color: #666;">Khu vực hiển thị Camera</span>
-    </div>
+        <!-- TABS -->
+        <div class="mode-tabs">
+            <button class="tab-btn active" id="tab-camera" onclick="switchMode('camera')">📹 Camera Trực Tiếp</button>
+            <button class="tab-btn" id="tab-image" onclick="switchMode('image')">🖼️ Upload Ảnh</button>
+        </div>
 
-    <div class="control-panel">
-        <h3 style="margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px;">Kết Quả Phân Tích:</h3>
-        <div id="label-container"></div>
-        <div id="mqtt-status" class="status">Chưa kết nối MQTT...</div>
+        <!-- MAIN GRID -->
+        <div class="main-grid">
+
+            <!-- LEFT -->
+            <div>
+                <div class="card" style="margin-bottom:1.2rem">
+                    <div class="card-title"><span>📷</span> Nguồn Nhận Diện</div>
+
+                    <!-- Camera mode -->
+                    <div id="camera-section">
+                        <div class="camera-wrap" id="webcam-container">
+                            <div class="cam-placeholder">
+                                <div class="big-icon">📷</div>
+                                <p>Nhấn <strong>Bật Camera</strong> để bắt đầu nhận diện theo thời gian thực</p>
+                            </div>
+                            <div class="live-badge live-off" id="live-badge">● OFFLINE</div>
+                            <div class="analysis-indicator" id="analysis-indicator">🔍 PHÂN TÍCH LIÊN TỤC</div>
+                        </div>
+                        <div class="offtopic-alert" id="offtopic-alert">
+                            <div class="ot-icon">⚠️</div>
+                            <div class="ot-text">
+                                <div class="ot-title" id="ot-title">Không nhận diện được cây trồng!</div>
+                                <div class="ot-desc" id="ot-desc">Hãy hướng camera vào lá cây để nhận diện chính xác.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary" id="btn-start" onclick="startCamera()">🚀 Bật
+                                Camera</button>
+                            <button class="btn btn-danger" id="btn-stop" onclick="stopCamera()" disabled>⏹ Dừng</button>
+                        </div>
+                    </div>
+
+                    <!-- Image mode -->
+                    <div id="image-section" style="display:none">
+                        <div class="upload-area" id="upload-area"
+                            onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)"
+                            ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                            <div class="up-icon">🖼️</div>
+                            <p>Kéo thả ảnh vào đây<br>hoặc nhấn để chọn file</p>
+                            <div class="up-hint">JPG · PNG · WEBP · GIF</div>
+                            <img id="upload-preview" alt="Preview">
+                            <div class="analyze-overlay" id="analyze-overlay">
+                                <button class="analyze-btn-big" onclick="analyzeImage(event)">🔍 Phân Tích Ảnh</button>
+                            </div>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+                        <div class="offtopic-alert" id="offtopic-alert-img">
+                            <div class="ot-icon">⚠️</div>
+                            <div class="ot-text">
+                                <div class="ot-title" id="ot-title-img">Không phải hình ảnh cây trồng!</div>
+                                <div class="ot-desc" id="ot-desc-img">Mô hình không thể nhận diện đối tượng này.</div>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-upload" onclick="document.getElementById('file-input').click()">📁
+                                Chọn Ảnh Khác</button>
+                            <button class="btn btn-primary" id="btn-analyze" onclick="analyzeImage(null)" disabled>🔍
+                                Phân Tích</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Config -->
+                <div class="card">
+                    <div class="card-title"><span>⚙️</span> Cấu Hình Hệ Thống</div>
+                    <div class="config-grid">
+                        <div class="form-field">
+                            <label>AIO Username</label>
+                            <input type="text" id="aio-user" placeholder="your_username">
+                        </div>
+                        <div class="form-field">
+                            <label>AIO Key</label>
+                            <input type="password" id="aio-key" placeholder="aio_xxxxxxx">
+                        </div>
+                        <div class="form-field full">
+                            <label>URL Mô Hình Teachable Machine</label>
+                            <input type="text" id="model-url"
+                                value="https://teachablemachine.withgoogle.com/models/hFjVe1EyC/">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%;margin-bottom:0.7rem" onclick="connectMQTT()">📡
+                        Kết Nối MQTT</button>
+                    <div class="mqtt-badge s-wait" id="mqtt-badge">
+                        <div class="dot"></div><span id="mqtt-text">Chưa kết nối MQTT</span>
+                    </div>
+                    <div class="cooldown-wrap" id="cooldown-wrap">
+                        <div class="cooldown-lbl">⏳ Cooldown: <span id="cooldown-secs">--</span>s còn lại</div>
+                        <div class="cooldown-bar-bg">
+                            <div class="cooldown-bar" id="cooldown-bar" style="width:100%"></div>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stat-pill">
+                            <div class="val" id="stat-frames">0</div>
+                            <div class="lbl">Frames</div>
+                        </div>
+                        <div class="stat-pill">
+                            <div class="val" id="stat-sent">0</div>
+                            <div class="lbl">Đã Gửi</div>
+                        </div>
+                        <div class="stat-pill">
+                            <div class="val" id="stat-ot">0</div>
+                            <div class="lbl">Off-Topic</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT -->
+            <div class="right-col">
+                <div class="card">
+                    <div class="card-title"><span>🎯</span> Kết Quả Phân Tích</div>
+                    <div class="ring-wrap">
+                        <div class="ring-svg-wrap">
+                            <svg viewBox="0 0 110 110">
+                                <circle class="ring-bg" cx="55" cy="55" r="46" />
+                                <circle class="ring-fg" id="ring-fg" cx="55" cy="55" r="46" stroke-dasharray="289"
+                                    stroke-dashoffset="289" stroke="#00e5b8" />
+                            </svg>
+                            <div class="ring-center">
+                                <div class="ring-pct" id="ring-pct">—</div>
+                                <div class="ring-lbl">Tin cậy</div>
+                            </div>
+                        </div>
+                        <div class="ring-info">
+                            <div class="best-class-label" id="best-class" style="color:var(--text-dim)">Đang chờ phân
+                                tích...</div>
+                            <div class="entropy-bar-wrap">
+                                <div class="entropy-lbl">Entropy phân phối: <span id="entropy-val">--</span></div>
+                                <div class="entropy-bar-bg">
+                                    <div class="entropy-bar" id="entropy-bar" style="width:0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pred-list" id="pred-list">
+                        <div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">Tải mô hình
+                            để xem kết quả...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span>💡</span> Khuyến Nghị Tưới Tiêu</div>
+                    <div class="rec-box" id="rec-box">Chờ AI phân tích hình ảnh cây trồng...</div>
+                    <div class="sp-effect" id="sp-effect"><span>↕</span><span id="sp-text">Đang điều chỉnh
+                            ngưỡng...</span></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span>📋</span> Lịch Sử Nhận Diện</div>
+                    <div class="history-scroll" id="history-scroll">
+                        <div class="empty-hist">Chưa có kết quả nào được ghi nhận</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    <div id="toast"></div>
 
     <script>
-        // Lấy thông tin từ sessionStorage nếu có (từ tab chính) để điền sẵn
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedUser = sessionStorage.getItem('aio_username');
-            if (savedUser) {
-                document.getElementById('aio-user').value = savedUser;
-            }
-        });
+        // ════════════════════════════════════════
+        // CONSTANTS
+        // ════════════════════════════════════════
+        const PUBLISH_MS = 10000;  // cooldown MQTT
+        const OFF_CONF_THR = 0.45;   // max confidence threshold
+        const OFF_ENTROPY_THR = 0.80;   // entropy threshold (0=certain, 1=random)
+        const OFF_FRAMES_CAM = 3;      // consecutive frames before showing cam alert
+        const MIN_SEND_CONF = 0.70;   // min confidence to publish
 
-        const CONFIG = {
-            username: '',
-            key: '',
-            feedCmd: 'ai-command'
-        };
+        // ════════════════════════════════════════
+        // STATE
+        // ════════════════════════════════════════
+        let model = null, webcam = null, mqttClient = null, rafId = null;
+        let currentMode = 'camera';
+        let modelLoaded = false;
+        let uploadedImg = null;
+        let analyzing = false;
 
-        let model, webcam, labelContainer, maxPredictions;
-        let mqttClient = null;
+        let statsFrames = 0, statsSent = 0, statsOT = 0;
         let lastPublish = 0;
-        const PUBLISH_INTERVAL = 10000; // Gửi 10 giây/lần để tránh bị khóa tài khoản (Rate Limit)
+        let offFrames = 0;
+        let cooldownTmr = null;
+
+        const histArr = [];
+        const MAX_HIST = 30;
+        const CFG = { user: '', key: '', feed: 'ai-command' };
+
+        // ════════════════════════════════════════
+        // HELPERS
+        // ════════════════════════════════════════
+        const $ = id => document.getElementById(id);
+        function toast(msg, ms = 3000) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), ms); }
+        function fmtNow() { return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+        function updStats() { $('stat-frames').textContent = statsFrames; $('stat-sent').textContent = statsSent; $('stat-ot').textContent = statsOT; }
+
+        // ════════════════════════════════════════
+        // SHANNON ENTROPY — off-topic detection
+        // ════════════════════════════════════════
+        /**
+         * Trả về entropy chuẩn hóa [0,1].
+         * 0 = chắc chắn 1 lớp (rõ ràng là cây trồng)
+         * 1 = phân phối đều (mô hình không nhận ra gì cả)
+         */
+        function entropy(probs) {
+            const n = probs.length;
+            if (n <= 1) return 0;
+            let H = 0;
+            probs.forEach(p => { if (p > 1e-9) H -= p * Math.log2(p); });
+            return H / Math.log2(n);
+        }
+
+        /**
+         * Phát hiện off-topic kép:
+         * 1. maxConf < OFF_CONF_THR  → độ tin cậy quá thấp
+         * 2. entropy > OFF_ENTROPY_THR → phân phối xác suất quá đều (không nhận ra)
+         * Trả về { isOT, reason, H, maxConf }
+         */
+        function detectOffTopic(preds) {
+            const probs = preds.map(p => p.probability);
+            const maxConf = Math.max(...probs);
+            const H = entropy(probs);
+
+            let isOT = false, reason = '';
+
+            if (maxConf < OFF_CONF_THR && H > OFF_ENTROPY_THR) {
+                isOT = true;
+                reason = `Đối tượng không thuộc phạm vi nhận diện — tin cậy: ${(maxConf * 100).toFixed(0)}%, entropy: ${(H * 100).toFixed(0)}% (mô hình không chắc chắn).`;
+            } else if (maxConf < OFF_CONF_THR) {
+                isOT = true;
+                reason = `Độ tin cậy quá thấp: ${(maxConf * 100).toFixed(0)}% < ${(OFF_CONF_THR * 100).toFixed(0)}% — không phải cây trồng được huấn luyện.`;
+            } else if (H > OFF_ENTROPY_THR) {
+                isOT = true;
+                reason = `Entropy phân phối cao: ${(H * 100).toFixed(0)}% — mô hình không nhận diện được đối tượng này.`;
+            }
+            return { isOT, reason, H, maxConf };
+        }
+
+        // ════════════════════════════════════════
+        // UI UPDATERS
+        // ════════════════════════════════════════
+        function updateRing(pct, color) {
+            const C = 289;
+            $('ring-fg').style.strokeDashoffset = C - C * pct;
+            $('ring-fg').style.stroke = color;
+            $('ring-pct').textContent = (pct * 100).toFixed(0) + '%';
+            $('ring-pct').style.color = color;
+        }
+
+        function updateEntropyBar(H) {
+            const bar = $('entropy-bar');
+            bar.style.width = (H * 100) + '%';
+            bar.style.background = H > OFF_ENTROPY_THR ? 'var(--danger)' : H > 0.55 ? 'var(--warn)' : 'var(--ok)';
+            $('entropy-val').textContent = (H * 100).toFixed(1) + '%';
+        }
+
+        function showOTAlert(show, id, title, desc) {
+            const el = $(id);
+            if (show) {
+                el.classList.add('show');
+                const tEl = $(id === 'offtopic-alert' ? 'ot-title' : 'ot-title-img');
+                const dEl = $(id === 'offtopic-alert' ? 'ot-desc' : 'ot-desc-img');
+                if (tEl && title) tEl.textContent = title;
+                if (dEl && desc) dEl.textContent = desc;
+                el.classList.remove('shake');
+                void el.offsetWidth; // reflow
+                el.classList.add('shake');
+            } else {
+                el.classList.remove('show');
+            }
+        }
+
+        function renderPreds(preds, topCls) {
+            const list = $('pred-list');
+            list.innerHTML = '';
+            [...preds].sort((a, b) => b.probability - a.probability).forEach(p => {
+                const pct = (p.probability * 100).toFixed(1);
+                const isTop = p.className === topCls;
+                const d = document.createElement('div');
+                d.className = 'pred-item' + (isTop ? ' top' : '');
+                d.innerHTML = `
+            <div class="pred-header">
+                <span class="pred-name">${isTop ? '★ ' : ''}${p.className}</span>
+                <span class="pred-pct">${pct}%</span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>`;
+                list.appendChild(d);
+            });
+        }
+
+        function getRecInfo(cls, conf, isOT) {
+            if (isOT) return { text: '⚠️ Không nhận diện được cây trồng. Vui lòng hướng camera vào lá cây hoặc chọn ảnh cây trồng rõ nét hơn.', cls: 'rec-info', sp: 0 };
+            if (conf < MIN_SEND_CONF) return { text: `🔍 Phát hiện "${cls}" nhưng độ tin cậy (${(conf * 100).toFixed(0)}%) chưa đủ. Cần thêm dữ liệu xác nhận.`, cls: '', sp: 0 };
+            const map = [
+                { k: ['thiếu nước', 'thieu nuoc'], text: '🔴 Cây đang thiếu nước nghiêm trọng! AI đề xuất tăng ngưỡng tưới, kích hoạt bơm sớm hơn.', cls: 'rec-bad', sp: +1 },
+                { k: ['bình thường', 'binh thuong'], text: '🟢 Cây phát triển bình thường, khỏe mạnh. Tiếp tục duy trì chế độ tưới hiện tại, không cần điều chỉnh.', cls: 'rec-good', sp: 0 },
+                { k: ['sâu bệnh', 'sau benh'], text: '🟠 Phát hiện dấu hiệu sâu bệnh! Kiểm tra và xử lý ngay. AI đề xuất giảm lượng nước tưới.', cls: 'rec-warn', sp: -1 },
+                { k: ['ngập úng', 'ngap ung'], text: '🔵 Đất quá ẩm! AI đề xuất giảm ngưỡng tưới và tạm ngừng bơm để tránh thối rễ.', cls: 'rec-info', sp: -1 },
+                { k: ['quá nóng', 'qua nong'], text: '🌡️ Cây bị stress nhiệt! Cần tăng tần suất tưới mát và che nắng.', cls: 'rec-warn', sp: +1 },
+            ];
+            const low = cls.toLowerCase();
+            for (const m of map) {
+                if (m.k.some(k => low.includes(k))) return { text: m.text, cls: m.cls, sp: m.sp };
+            }
+            return { text: `📊 AI ghi nhận trạng thái: "${cls}". Tiếp tục theo dõi để có khuyến nghị cụ thể hơn.`, cls: '', sp: 0 };
+        }
+
+        function updateRec(cls, conf, isOT) {
+            const rec = getRecInfo(cls, conf, isOT);
+            const box = $('rec-box');
+            box.textContent = rec.text;
+            box.className = 'rec-box ' + (rec.cls || '');
+            const spEl = $('sp-effect');
+            if (rec.sp !== 0) {
+                spEl.classList.add('show');
+                $('sp-text').textContent = rec.sp > 0 ? '↑ Tăng ngưỡng độ ẩm tưới +1%' : '↓ Giảm ngưỡng độ ẩm tưới -1%';
+                spEl.style.color = rec.sp > 0 ? 'var(--ok)' : '#a78bfa';
+            } else {
+                spEl.classList.remove('show');
+            }
+        }
+
+        function addHist(cls, conf, isOT, mode) {
+            histArr.unshift({ time: fmtNow(), cls, conf, isOT, mode });
+            if (histArr.length > MAX_HIST) histArr.pop();
+            renderHist();
+        }
+
+        function renderHist() {
+            const sc = $('history-scroll');
+            if (!histArr.length) { sc.innerHTML = '<div class="empty-hist">Chưa có kết quả nào</div>'; return; }
+            sc.innerHTML = histArr.map(h => {
+                if (h.isOT) return `<div class="hist-item"><span class="hist-time">${h.time}</span><span class="hist-mode">${h.mode === 'camera' ? '📹' : '🖼️'}</span><span class="hist-cls" style="color:var(--text-dim)">— Ngoài phạm vi</span><span class="hist-badge hb-ot">OT</span></div>`;
+                const pct = (h.conf * 100).toFixed(0);
+                const bc = h.conf >= 0.8 ? 'hb-high' : h.conf >= 0.6 ? 'hb-mid' : 'hb-low';
+                return `<div class="hist-item"><span class="hist-time">${h.time}</span><span class="hist-mode">${h.mode === 'camera' ? '📹' : '🖼️'}</span><span class="hist-cls">${h.cls}</span><span class="hist-badge ${bc}">${pct}%</span></div>`;
+            }).join('');
+        }
+
+        // ════════════════════════════════════════
+        // COOLDOWN BAR
+        // ════════════════════════════════════════
+        function startCooldown() {
+            const wrap = $('cooldown-wrap'), bar = $('cooldown-bar'), secs = $('cooldown-secs');
+            wrap.classList.add('show');
+            let remaining = PUBLISH_MS / 1000;
+            secs.textContent = remaining;
+            bar.style.width = '100%';
+            if (cooldownTmr) clearInterval(cooldownTmr);
+            cooldownTmr = setInterval(() => {
+                remaining--;
+                secs.textContent = remaining;
+                bar.style.width = (remaining / (PUBLISH_MS / 1000) * 100) + '%';
+                if (remaining <= 0) { clearInterval(cooldownTmr); wrap.classList.remove('show'); }
+            }, 1000);
+        }
+
+        // ════════════════════════════════════════
+        // MQTT
+        // ════════════════════════════════════════
+        function setMqttUI(text, cls) { $('mqtt-badge').className = 'mqtt-badge ' + cls; $('mqtt-text').textContent = text; }
 
         function connectMQTT() {
-            CONFIG.username = document.getElementById('aio-user').value.trim();
-            CONFIG.key = document.getElementById('aio-key').value.trim();
+            CFG.user = $('aio-user').value.trim();
+            CFG.key = $('aio-key').value.trim();
+            if (!CFG.user || !CFG.key) { toast('⚠️ Vui lòng nhập Username và AIO Key!'); return; }
+            localStorage.setItem('aio_username', CFG.user);
+            if (mqttClient) { mqttClient.end(); mqttClient = null; }
+            setMqttUI('⏳ Đang kết nối...', 's-wait');
+            mqttClient = mqtt.connect('wss://io.adafruit.com:443/mqtt', {
+                username: CFG.user, password: CFG.key, protocolVersion: 4, clean: true, reconnectPeriod: 6000
+            });
+            mqttClient.on('connect', () => { setMqttUI('✅ Đã kết nối MQTT', 's-ok'); toast('✅ MQTT kết nối thành công!'); });
+            mqttClient.on('error', err => {
+                if ((err.message || '').match(/authorized|bad username/i)) { setMqttUI('❌ Sai username hoặc key!', 's-err'); mqttClient.end(); }
+                else setMqttUI('❌ Lỗi kết nối MQTT', 's-err');
+            });
+            mqttClient.on('offline', () => setMqttUI('⚡ Mất kết nối, thử lại...', 's-wait'));
+        }
 
-            if (!CONFIG.username || !CONFIG.key) {
-                document.getElementById('mqtt-status').innerText = "⚠️ Lỗi: Vui lòng nhập đầy đủ Username và Key Adafruit IO!";
-                document.getElementById('mqtt-status').style.color = "var(--color-alert)";
+        function publishResult(cls, conf) {
+            const now = Date.now();
+            if (now - lastPublish < PUBLISH_MS) return;
+            if (!mqttClient?.connected) return;
+            const payload = JSON.stringify({ class: cls, confidence: parseFloat(conf.toFixed(4)), mode: currentMode, ts: now });
+            mqttClient.publish(`${CFG.user}/feeds/${CFG.feed}`, payload, { qos: 1 }, err => {
+                if (!err) {
+                    lastPublish = now; statsSent++; updStats();
+                    setMqttUI(`📡 Gửi: [${cls}] ${(conf * 100).toFixed(0)}%`, 's-send');
+                    startCooldown();
+                    setTimeout(() => { if (mqttClient?.connected) setMqttUI('✅ Đã kết nối MQTT', 's-ok'); }, 3000);
+                }
+            });
+        }
+
+        // ════════════════════════════════════════
+        // MODEL
+        // ════════════════════════════════════════
+        async function loadModel() {
+            const url = $('model-url').value.trim();
+            if (!url) { toast('⚠️ Vui lòng nhập URL mô hình!'); return false; }
+            try {
+                model = await tmImage.load(url + 'model.json', url + 'metadata.json');
+                modelLoaded = true;
+                return true;
+            } catch (e) {
+                console.error('[AI] loadModel:', e);
+                toast('❌ Không tải được mô hình! Kiểm tra URL Teachable Machine.');
                 return false;
             }
-
-            document.getElementById('mqtt-status').innerText = "⏳ Đang kết nối MQTT Broker...";
-
-            const options = {
-                username: CONFIG.username,
-                password: CONFIG.key,
-                protocolVersion: 4,
-                clean: true,
-                reconnectPeriod: 5000
-            };
-
-            mqttClient = mqtt.connect(`wss://io.adafruit.com:443/mqtt`, options);
-
-            mqttClient.on('connect', () => {
-                document.getElementById('mqtt-status').innerText = "✅ Đã kết nối MQTT Broker thành công!";
-                document.getElementById('mqtt-status').style.color = "var(--color-moisture)";
-            });
-
-            mqttClient.on('error', (err) => {
-                console.error(err);
-                document.getElementById('mqtt-status').innerText = "❌ Lỗi kết nối MQTT!";
-                document.getElementById('mqtt-status').style.color = "var(--color-alert)";
-                
-                if (err.message && err.message.includes('authorized')) {
-                    document.getElementById('mqtt-status').innerText = "❌ Sai Username hoặc Key! Vui lòng F5.";
-                    mqttClient.end();
-                }
-            });
-
-            return true;
         }
 
-        async function init() {
-            if (!connectMQTT()) return;
+        function buildPredBars() {
+            const list = $('pred-list');
+            list.innerHTML = '';
+            for (let i = 0; i < model.getTotalClasses(); i++) {
+                const d = document.createElement('div');
+                d.className = 'pred-item';
+                d.innerHTML = '<div class="pred-header"><span class="pred-name"></span><span class="pred-pct">0%</span></div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div>';
+                list.appendChild(d);
+            }
+        }
 
-            document.getElementById('btn-start').disabled = true;
-            document.getElementById('btn-start').innerText = "Đang khởi động Camera...";
+        // ════════════════════════════════════════
+        // CAMERA MODE
+        // ════════════════════════════════════════
+        async function startCamera() {
+            const bStart = $('btn-start');
+            bStart.disabled = true;
+            bStart.innerHTML = '<div class="spinner"></div> Tải mô hình...';
 
-            const URL = document.getElementById('model-url').value;
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
+            if (!modelLoaded) {
+                const ok = await loadModel();
+                if (!ok) { bStart.disabled = false; bStart.textContent = '🚀 Bật Camera'; return; }
+            }
+            bStart.textContent = '⏳ Khởi động camera...';
             try {
-                // Load model
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-
-                // Setup webcam
-                const flip = true;
-                webcam = new tmImage.Webcam(400, 400, flip);
-                await webcam.setup(); // request access to the webcam
-                await webcam.play();
-                window.requestAnimationFrame(loop);
-
-                // Gắn canvas vào DOM
-                const wc = document.getElementById("webcam-container");
-                wc.innerHTML = ""; // Clear placeholder
+                webcam = new tmImage.Webcam(420, 315, true);
+                await webcam.setup(); await webcam.play();
+                const wc = $('webcam-container');
+                wc.innerHTML = '';
                 wc.appendChild(webcam.canvas);
 
-                // Tao UI danh sach classes
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = "";
-                for (let i = 0; i < maxPredictions; i++) {
-                    const div = document.createElement("div");
-                    div.innerHTML = `
-                        <div class="label-header">
-                            <span class="label-name"></span>
-                            <span class="label-pct"></span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar" style="width:0%"></div>
-                        </div>
-                    `;
-                    labelContainer.appendChild(div);
-                }
+                const badge = document.createElement('div');
+                badge.className = 'live-badge live-on';
+                badge.textContent = '● LIVE';
+                wc.appendChild(badge);
 
-                document.getElementById('btn-start').innerText = "Đang chạy Nhận diện AI...";
-            } catch (err) {
-                console.error(err);
-                alert("Lỗi tải Model Teachable Machine. Vui lòng kiểm tra link.");
-                document.getElementById('btn-start').disabled = false;
-                document.getElementById('btn-start').innerText = "Thử lại";
+                const ind = document.createElement('div');
+                ind.className = 'analysis-indicator show';
+                ind.textContent = '🔍 PHÂN TÍCH LIÊN TỤC';
+                wc.appendChild(ind);
+
+                bStart.disabled = true;
+                $('btn-stop').disabled = false;
+                buildPredBars();
+                offFrames = 0;
+                rafId = requestAnimationFrame(camLoop);
+            } catch (e) {
+                console.error('[Camera]', e);
+                toast('❌ Không thể mở camera. Kiểm tra quyền truy cập camera!');
+                bStart.disabled = false; bStart.textContent = '🚀 Bật Camera';
             }
         }
 
-        async function loop() {
+        function stopCamera() {
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            if (webcam) { webcam.stop(); webcam = null; }
+            $('webcam-container').innerHTML = `<div class="cam-placeholder"><div class="big-icon">📷</div><p>Camera đã dừng</p></div><div class="live-badge live-off">● OFFLINE</div>`;
+            $('btn-start').disabled = false; $('btn-start').textContent = '🚀 Bật Camera';
+            $('btn-stop').disabled = true;
+            showOTAlert(false, 'offtopic-alert', '', '');
+        }
+
+        async function camLoop() {
             webcam.update();
-            await predict();
-            window.requestAnimationFrame(loop);
+            await runPredict(webcam.canvas, 'camera');
+            rafId = requestAnimationFrame(camLoop);
         }
 
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            let bestClass = "";
-            let bestProb = 0;
+        // ════════════════════════════════════════
+        // IMAGE MODE
+        // ════════════════════════════════════════
+        function switchMode(mode) {
+            currentMode = mode;
+            $('camera-section').style.display = mode === 'camera' ? '' : 'none';
+            $('image-section').style.display = mode === 'image' ? '' : 'none';
+            $('tab-camera').classList.toggle('active', mode === 'camera');
+            $('tab-image').classList.toggle('active', mode === 'image');
+            if (mode !== 'camera' && webcam) stopCamera();
+            showOTAlert(false, 'offtopic-alert', '', '');
+            showOTAlert(false, 'offtopic-alert-img', '', '');
+        }
 
-            for (let i = 0; i < maxPredictions; i++) {
-                const prob = prediction[i].probability;
-                const name = prediction[i].className;
+        function handleDragOver(e) { e.preventDefault(); $('upload-area').classList.add('dragover'); }
+        function handleDragLeave(e) { $('upload-area').classList.remove('dragover'); }
+        function handleDrop(e) { e.preventDefault(); $('upload-area').classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) loadFile(f); }
+        function handleFileSelect(e) { const f = e.target.files[0]; if (f) loadFile(f); }
 
-                labelContainer.childNodes[i].querySelector('.label-name').innerText = name;
-                labelContainer.childNodes[i].querySelector('.label-pct').innerText = (prob * 100).toFixed(1) + "%";
-                labelContainer.childNodes[i].querySelector('.progress-bar').style.width = (prob * 100) + "%";
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const prev = $('upload-preview');
+                prev.src = ev.target.result;
+                prev.style.display = 'block';
+                uploadedImg = new Image();
+                uploadedImg.src = ev.target.result;
+                uploadedImg.onload = () => {
+                    $('btn-analyze').disabled = false;
+                    $('analyze-overlay').classList.add('show');
+                };
+                showOTAlert(false, 'offtopic-alert-img', '', '');
+            };
+            reader.readAsDataURL(file);
+        }
 
-                if (prob > bestProb) {
-                    bestProb = prob;
-                    bestClass = name;
+        async function analyzeImage(e) {
+            if (e) e.stopPropagation();
+            if (!uploadedImg || analyzing) return;
+            analyzing = true;
+            const bAn = $('btn-analyze');
+            bAn.disabled = true; bAn.innerHTML = '<div class="spinner"></div> Đang phân tích...';
+            $('analyze-overlay').classList.remove('show');
+
+            if (!modelLoaded) {
+                const ok = await loadModel();
+                if (!ok) { analyzing = false; bAn.disabled = false; bAn.textContent = '🔍 Phân Tích'; return; }
+                buildPredBars();
+            }
+            try {
+                const preds = await model.predict(uploadedImg);
+                await runPredict(uploadedImg, 'image', preds);
+            } catch (e) {
+                console.error('[Image]', e); toast('❌ Lỗi phân tích ảnh!');
+            } finally {
+                analyzing = false; bAn.disabled = false; bAn.textContent = '🔍 Phân Tích';
+            }
+        }
+
+        // ════════════════════════════════════════
+        // CORE PREDICTION ENGINE
+        // ════════════════════════════════════════
+        async function runPredict(source, mode, preComputed = null) {
+            statsFrames++; updStats();
+            const preds = preComputed || await model.predict(source);
+
+            // Best class
+            let bestCls = preds[0].className, bestConf = preds[0].probability;
+            preds.forEach(p => { if (p.probability > bestConf) { bestConf = p.probability; bestCls = p.className; } });
+
+            // Off-topic detection
+            const { isOT, reason, H, maxConf } = detectOffTopic(preds);
+
+            updateEntropyBar(H);
+
+            const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
+
+            if (isOT) {
+                if (mode === 'camera') {
+                    offFrames++;
+                    if (offFrames >= OFF_FRAMES_CAM) {
+                        showOTAlert(true, alertId,
+                            `⚠️ Không nhận diện được! (${(maxConf * 100).toFixed(0)}% tin cậy)`,
+                            reason);
+                    }
+                } else {
+                    showOTAlert(true, alertId, '❌ Không phải hình ảnh cây trồng!', reason);
                 }
+
+                statsOT++; updStats();
+                updateRing(maxConf, 'var(--danger)');
+                const bc = $('best-class');
+                bc.textContent = '❌ Ngoài phạm vi nhận diện'; bc.style.color = 'var(--danger)';
+                renderPreds(preds, null);
+                updateRec(bestCls, bestConf, true);
+                if (mode === 'image' || offFrames >= OFF_FRAMES_CAM) addHist(bestCls, bestConf, true, mode);
+                return;
             }
 
-            // Gửi dữ liệu qua MQTT nếu độ tin cậy > 70% và đã qua 10 giây
-            const now = Date.now();
-            if (bestProb > 0.7 && (now - lastPublish > PUBLISH_INTERVAL) && mqttClient && mqttClient.connected) {
-                const payload = JSON.stringify({ class: bestClass, confidence: bestProb });
-                const topic = `${CONFIG.username}/feeds/${CONFIG.feedCmd}`;
+            // Valid detection
+            offFrames = 0;
+            showOTAlert(false, alertId, '', '');
 
-                mqttClient.publish(topic, payload, { qos: 1 });
+            const ringColor = bestConf >= 0.85 ? 'var(--ok)' : bestConf >= 0.65 ? 'var(--warn)' : 'var(--danger)';
+            updateRing(bestConf, ringColor);
 
-                document.getElementById('mqtt-status').innerText = `📡 Vừa gửi: [${bestClass}] (${(bestProb * 100).toFixed(0)}%) lên MQTT`;
-                lastPublish = now;
+            const bc = $('best-class');
+            bc.textContent = bestCls;
+            bc.style.color = bestConf >= 0.7 ? 'var(--ok)' : 'var(--warn)';
+
+            renderPreds(preds, bestCls);
+            updateRec(bestCls, bestConf, false);
+
+            if (bestConf >= MIN_SEND_CONF) {
+                publishResult(bestCls, bestConf);
+                addHist(bestCls, bestConf, false, mode);
             }
         }
+
+        // ════════════════════════════════════════
+        // INIT
+        // ════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('aio_username');
+            if (saved) $('aio-user').value = saved;
+
+            // Pre-load model in background
+            setTimeout(async () => {
+                const ok = await loadModel();
+                if (ok) { buildPredBars(); toast('✅ Mô hình AI đã sẵn sàng!'); }
+            }, 600);
+        });
     </script>
 </body>
 

@@ -1,12 +1,20 @@
 """
 Nha Kinh Thong Minh - Task Giao Tiep MQTT
 ============================================
-NANG CAP v3.0:
-  [1] Thong nhat giao thuc: dung MQTTv5 ca backend lan comment (dashboard dung MQTTv3.1 qua WSS)
-  [2] fetchHistoricalData phai dung Promise.all (loi o dashboard JS, ghi chu o day)
-  [3] offline_queue: ghi chu ro ve security (payload khong nhay cam)
-  [4] Exponential backoff chinh xac tu paho (reconnect_delay_set da co)
-  [5] Giu nguyen: Token Bucket, offline queue TTL, LWT, QoS 1 cho cmd feeds
+NANG CAP v5.0 - Batch Publish:
+  [1] Gom 6 sensor feeds + pump_status -> 1 JSON tren feed "sensor-data"
+      Tiet kiem: 9 data points/cycle -> 2 data points/cycle
+      Con lai ~28 points/phut cho alerts va events (tu 5.5 len 28)
+  [2] RATE_LIMIT_MIN_INTERVAL: 22s -> 5s (an toan vi chi con 2 feeds/cycle)
+  [3] Dashboard: them handler cho feed "sensor-data" JSON
+  [4] Giu nguyen: Token Bucket, offline queue TTL, LWT, QoS 1 cho cmd feeds
+  [5] Backward compat: FEED_PUMP_STATUS van dung cho LWT
+
+NANG CAP v3.0 (giu nguyen):
+  [1] Thong nhat giao thuc: dung MQTTv311 (Adafruit IO khong ho tro v5)
+  [2] offline_queue: ghi chu ro ve security (payload khong nhay cam)
+  [3] Exponential backoff chinh xac tu paho (reconnect_delay_set da co)
+  [4] Giu nguyen: Token Bucket, offline queue TTL, LWT, QoS 1 cho cmd feeds
 """
 
 import os
@@ -325,24 +333,32 @@ class MQTTTask(BaseTask):
         pid      = self.greenhouse.get_pid_state()
 
         try:
-            feeds_to_publish = [
-                (cfg.FEED_SOIL_MOISTURE, str(sensors["soil_moisture"])),
-                (cfg.FEED_TEMPERATURE,   str(sensors["temperature"])),
-                (cfg.FEED_LIGHT,         str(sensors["light_intensity"])),
-                (cfg.FEED_HUMIDITY,      str(sensors["humidity"])),
-                (cfg.FEED_CO2,           str(sensors["co2_level"])),
-                (cfg.FEED_PUMP_STATUS,   "ON" if self.greenhouse.is_pump_on() else "OFF"),
-            ]
+            # --- BATCH PUBLISH: gom tat ca sensor vao 1 JSON ---
+            # Truoc v5.0: 7 feeds rieng le = 7 data points/cycle
+            # Sau  v5.0: 1 feed sensor-data + 1 feed ai-status = 2 data points/cycle
+            sensor_batch = {
+                "soil_moisture":   round(sensors["soil_moisture"],   2),
+                "temperature":     round(sensors["temperature"],     2),
+                "light_intensity": round(sensors["light_intensity"], 1),
+                "humidity":        round(sensors["humidity"],        2),
+                "co2_level":       round(sensors["co2_level"],      1),
+                "ec_level":        round(sensors["ec_level"],       3),
+                "ph_level":        round(sensors["ph_level"],       2),
+                "pump_status":     "ON" if self.greenhouse.is_pump_on() else "OFF",
+                "ts":              int(now),
+            }
 
             ai = self.greenhouse.get_ai_status()
             ai["sim_time"]          = sim_time
             ai["sim_day"]           = self.greenhouse.get_sim_day()
-            ai["pid_output"]        = round(pid["output"], 1)
+            ai["pid_output"]        = round(pid["output"],   1)
             ai["pid_setpoint"]      = round(pid["setpoint"], 1)
             ai["weather_condition"] = self.greenhouse.get_weather()["condition"]
-            feeds_to_publish.append(
-                (cfg.FEED_AI_STATUS, json.dumps(ai, ensure_ascii=False))
-            )
+
+            feeds_to_publish = [
+                (cfg.FEED_SENSOR_DATA, json.dumps(sensor_batch, ensure_ascii=False)),
+                (cfg.FEED_AI_STATUS,   json.dumps(ai,           ensure_ascii=False)),
+            ]
 
             for feed_name, payload in feeds_to_publish:
                 topic = cfg.get_topic(feed_name)
@@ -361,6 +377,7 @@ class MQTTTask(BaseTask):
             logger.info(
                 f"  [GUI] Queued {len(feeds_to_publish)} feeds | #{self.publish_count} | "
                 f"M={sensors['soil_moisture']}% T={sensors['temperature']}C "
+                f"EC={sensors['ec_level']}mS pH={sensors['ph_level']} "
                 f"Pump={pump_str} SimTime={sim_time}"
             )
         except Exception as e:

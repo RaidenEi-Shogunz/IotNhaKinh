@@ -54,6 +54,26 @@ class AlertTask(BaseTask):
 
             ("CO2_HIGH", sensors["co2_level"] > cfg.CO2_MAX,
              f"CO2 vuot nguong: {sensors['co2_level']:.0f}ppm!", "WARNING"),
+
+            # --- EC alerts (v6.0) ---
+            ("EC_LOW", sensors["ec_level"] < cfg.EC_WARN_LOW,
+             f"EC thap - thieu dinh duong: {sensors['ec_level']:.2f} mS/cm", "WARNING"),
+
+            ("EC_HIGH", sensors["ec_level"] > cfg.EC_WARN_HIGH,
+             f"EC cao - nguy co mat nuoc / muoi: {sensors['ec_level']:.2f} mS/cm", "WARNING"),
+
+            ("EC_CRITICAL", sensors["ec_level"] > cfg.EC_MAX_CLAMP * 0.85,
+             f"EC NGUY HIEM - doc muoi: {sensors['ec_level']:.2f} mS/cm!", "CRITICAL"),
+
+            # --- pH alerts (v6.0) ---
+            ("PH_LOW", sensors["ph_level"] < cfg.PH_WARN_LOW,
+             f"pH dat qua acid: {sensors['ph_level']:.2f} (toi uu: {cfg.PH_OPT_LOW}-{cfg.PH_OPT_HIGH})", "WARNING"),
+
+            ("PH_HIGH", sensors["ph_level"] > cfg.PH_WARN_HIGH,
+             f"pH dat qua kiem: {sensors['ph_level']:.2f} (toi uu: {cfg.PH_OPT_LOW}-{cfg.PH_OPT_HIGH})", "WARNING"),
+
+            ("PH_CRITICAL_LOW", sensors["ph_level"] < cfg.PH_MIN_CLAMP + 0.5,
+             f"pH NGUY HIEM - acid nang: {sensors['ph_level']:.2f}!", "CRITICAL"),
         ]
 
         for alert_type, condition, message, severity in checks:

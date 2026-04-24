@@ -1,7 +1,21 @@
 """
 Nha Kinh Thong Minh - Task Mo Phong Moi Truong
 =================================================
-NANG CAP v3.0:
+NANG CAP v6.0 - Nutrient / EC / pH Model:
+  [1] EC (Electrical Conductivity):
+      - Dilution khi tuoi: EC giam (pha loang muoi)
+      - Concentration ban ngay: EC tang cham (bay hoi nuoc)
+      - Mua: EC giam nhanh (nuoc mua ~ distilled)
+      - Nhiet do: hieu chinh 2%/degC (IEC 60746-3)
+      - Phan bon nen: EC tang rat cham theo thoi gian
+  [2] pH:
+      - CO2 hoa tan -> H2CO3 -> giam pH (linearized carbonate chemistry)
+      - Tuoi nuoc: pH drift ve can bang (6.8)
+      - Mua acid nhe: pH giam
+      - Vi sinh vat ban dem: pH giam nhe
+      - Phan bon ammonium: pH giam rat cham
+
+NANG CAP v3.0 (giu nguyen):
   [1] Magnus formula chinh xac cho Dew Point
   [2] Leaf Transpiration model (Penman-Monteith simplified)
   [3] Gaussian spike model linh hoat (sigma tu config)
@@ -90,6 +104,8 @@ class EnvironmentTask(BaseTask):
         moisture    = self._calc_moisture(is_day, weather, dt_factor, light, temperature)
         humidity    = self._calc_humidity_magnus(is_day, weather, temperature, moisture)
         co2         = self._calc_co2(sim_hour, is_day, light, temperature, dt_factor, weather)
+        ec          = self._calc_ec(is_day, weather, dt_factor, temperature)
+        ph          = self._calc_ph(is_day, weather, dt_factor, co2)
 
         gh.set_sensors(
             temperature=temperature,
@@ -97,6 +113,8 @@ class EnvironmentTask(BaseTask):
             soil_moisture=moisture,
             humidity=humidity,
             co2_level=co2,
+            ec_level=ec,
+            ph_level=ph,
         )
 
         self.run_count += 1
@@ -107,7 +125,7 @@ class EnvironmentTask(BaseTask):
             f"[{sim_time}] {day_str}{w_str} | "
             f"M={moisture:.1f}% T={temperature:.1f}C "
             f"L={light:.0f}lux H={humidity:.1f}% "
-            f"CO2={co2:.0f}ppm | "
+            f"CO2={co2:.0f}ppm EC={ec:.2f}mS pH={ph:.2f} | "
             f"Pump={'ON' if gh.is_pump_on() else 'OFF'}"
         )
 
@@ -297,3 +315,111 @@ class EnvironmentTask(BaseTask):
             co2 += random.gauss(0, 40.0) * random.choice([-1, 1])
 
         return max(200.0, min(2000.0, co2))
+
+    def _calc_ec(self, is_day: bool, weather: dict, dt_factor: float,
+                 temperature: float) -> float:
+        """
+        Mo hinh EC (Electrical Conductivity, mS/cm).
+
+        Cac hieu ung:
+          1. Dilution  : bom chay -> pha loang muoi -> EC giam
+          2. Concentration: ban ngay, bay hoi nuoc -> EC tang cham
+          3. Mua       : EC giam nhanh (nuoc mua ~ distilled, EC~0)
+          4. Phan bon  : EC tang rat cham (nen tich luy)
+          5. Nhiet do  : hieu chinh 2%/degC - KHONG ap vao state,
+                         chi hien thi/log (tranh drift vinh vien)
+          6. Spike     : cam bien EC thuc te co nhieu dien tu
+        """
+        cfg = self.config
+        # Doc truc tiep de tranh quantization error
+        ec = self.greenhouse.ec_level
+
+        pump_on = self.greenhouse.is_pump_on()
+
+        # 1. Pha loang khi tuoi (ty le pha loang phu thuoc duty cycle)
+        if pump_on:
+            mode = self.greenhouse.get_mode()
+            duty = (self.greenhouse.get_pump_duty()
+                    if (mode == "AUTO" and cfg.PID_ENABLED) else 100.0)
+            dilution = cfg.EC_DILUTION_RATE * (duty / 100.0) * dt_factor
+            ec *= (1.0 - dilution)
+
+        # 2. Concentration ban ngay (bay hoi nuoc, muoi o lai)
+        if is_day:
+            ec *= (1.0 + cfg.EC_CONCENTRATION_RATE * dt_factor)
+
+        # 3. Mua pha loang (nuoc mua co EC ~ 0 -> pha loang manh)
+        if weather["condition"] == "rainy":
+            dilution_rain = cfg.EC_RAIN_DILUTION * weather["rain_intensity"] * dt_factor
+            ec *= (1.0 - dilution_rain)
+
+        # 4. Phan bon nen: tang tuyet doi rat cham
+        ec += cfg.EC_FERTILIZER_RATE * dt_factor
+
+        # 5. Noise cam bien (Gaussian)
+        ec += random.gauss(0, cfg.EC_NOISE)
+
+        # 6. Spike dien tu (cam bien conductivity nhay cam voi nhieu)
+        if random.random() < self._spike_prob * 0.5:   # it spike hon nhiet do
+            ec += random.gauss(0, cfg.EC_NOISE * 4) * random.choice([-1, 1])
+
+        ec = max(cfg.EC_MIN_CLAMP, min(cfg.EC_MAX_CLAMP, ec))
+
+        # Ghi note: hieu chinh nhiet do (EC_ref_25C) chi dung de log/display,
+        # KHONG luu vao state vi se gay drift vinh vien.
+        # ec_at_25C = ec / (1 + cfg.EC_TEMP_COEFF * (temperature - 25.0))
+        return ec
+
+    def _calc_ph(self, is_day: bool, weather: dict, dt_factor: float,
+                 co2: float) -> float:
+        """
+        Mo hinh pH dung dich dat / nuoc tuoi.
+
+        Cac hieu ung:
+          1. CO2 hoa tan -> H2CO3 -> ha pH
+             pH_drop = CO2_SENSITIVITY * (co2 - CO2_BASELINE)
+             (Linearized tu phuong trinh carbonate: pH = pK1 - log[CO2/HCO3-])
+          2. Tuoi nuoc: pH drift ve can bang (PH_EQUILIBRIUM = 6.8)
+             Nuoc tuoi thong thuong co pH 6.5-7.5, pha loang acid/base
+          3. Mua acid nhe: pH mua do thi ~ 5.6 (CO2 khong khi)
+          4. Vi sinh vat ban dem: tiet acid huu co -> pH giam nhe
+          5. Phan bon ammonium: nitrat hoa -> H+ -> pH giam rat cham
+          6. Spike cam bien (do bien dong ion cuc bo)
+        """
+        cfg = self.config
+        ph  = self.greenhouse.ph_level
+
+        # 1. Hieu ung CO2 hoa tan (carbonate chemistry linearized)
+        #    CO2 tang -> H2CO3 tang -> pH giam
+        co2_excess = max(0.0, co2 - cfg.PH_CO2_BASELINE)
+        ph_target_co2 = cfg.PH_EQUILIBRIUM - cfg.PH_CO2_SENSITIVITY * co2_excess
+        # Dung first-order lag: pH tien dan ve target theo toc do cham
+        ph += (ph_target_co2 - ph) * 0.05 * dt_factor
+
+        # 2. Tuoi nuoc: pH drift ve diem can bang (pha loang acid/base)
+        if self.greenhouse.is_pump_on():
+            mode = self.greenhouse.get_mode()
+            duty = (self.greenhouse.get_pump_duty()
+                    if (mode == "AUTO" and cfg.PID_ENABLED) else 100.0)
+            drift_strength = cfg.PH_IRRIGATION_DRIFT * (duty / 100.0) * dt_factor
+            ph += (cfg.PH_EQUILIBRIUM - ph) * drift_strength
+
+        # 3. Mua acid nhe (pH mua ~ 5.6, thap hon dat nha kinh)
+        if weather["condition"] == "rainy":
+            ph -= cfg.PH_RAIN_EFFECT * weather["rain_intensity"] * dt_factor
+
+        # 4. Vi sinh vat ban dem (tiet acid huu co)
+        if not is_day:
+            ph -= cfg.PH_MICROBIAL_NIGHT * dt_factor
+
+        # 5. Phan bon ammonium (tich luy theo thoi gian, rat cham)
+        ph -= cfg.PH_FERTILIZER_ACIDIFY * dt_factor
+
+        # 6. Noise cam bien pH (ISE electrode drift)
+        ph += random.gauss(0, cfg.PH_NOISE)
+
+        # 7. Spike (bien dong ion cuc bo, it khi xay ra)
+        if random.random() < self._spike_prob * 0.3:
+            ph += random.gauss(0, 0.15) * random.choice([-1, 1])
+
+        return max(cfg.PH_MIN_CLAMP, min(cfg.PH_MAX_CLAMP, ph))
