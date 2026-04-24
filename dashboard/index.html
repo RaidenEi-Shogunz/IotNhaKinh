@@ -64,9 +64,10 @@
         <div class="header-center">
             <div class="status-bar">
                 <span id="mqtt-status" class="status-dot offline">● Mất kết nối</span>
-                <span id="sim-clock" class="sim-clock">06:00</span> <!-- Thoi gian thuc -->
+                <span id="sim-clock" class="sim-clock">06:00</span>
                 <span id="sim-day" style="font-size:0.72rem; color:var(--text-muted)">Ngày 1</span>
                 <span id="weather-display" class="weather-icon">☀️ Quang đãng</span>
+                <span id="last-update" class="last-update" title="Thời gian cập nhật gần nhất">⏱ --</span>
             </div>
         </div>
 
@@ -162,6 +163,38 @@
                 <div class="sensor-status" id="status-co2">Đang chờ...</div>
                 <div class="sparkline-wrap"><canvas id="sparkline-co2" width="100" height="30"></canvas></div>
             </div>
+
+            <!-- EC -->
+            <div class="sensor-card" id="card-ec">
+                <h3>⚡ EC</h3>
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 120 120" class="gauge-svg">
+                        <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                        <circle class="gauge-fill" id="gauge-ec" cx="60" cy="60" r="52"
+                            style="stroke: #f97316" />
+                    </svg>
+                    <div class="gauge-value" id="val-ec">--</div>
+                    <div class="gauge-unit">mS/cm</div>
+                </div>
+                <div class="sensor-status" id="status-ec">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-ec" width="100" height="30"></canvas></div>
+            </div>
+
+            <!-- pH -->
+            <div class="sensor-card" id="card-ph">
+                <h3>🧪 pH</h3>
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 120 120" class="gauge-svg">
+                        <circle class="gauge-bg" cx="60" cy="60" r="52" />
+                        <circle class="gauge-fill" id="gauge-ph" cx="60" cy="60" r="52"
+                            style="stroke: #14b8a6" />
+                    </svg>
+                    <div class="gauge-value" id="val-ph">--</div>
+                    <div class="gauge-unit">pH</div>
+                </div>
+                <div class="sensor-status" id="status-ph">Đang chờ...</div>
+                <div class="sparkline-wrap"><canvas id="sparkline-ph" width="100" height="30"></canvas></div>
+            </div>
         </section>
 
         <!-- Chart + Controls -->
@@ -203,25 +236,14 @@
                         aria-label="Biểu đồ overlay độ ẩm và nhiệt độ"></canvas>
                 </div>
 
-                <!-- ── Biểu đồ cảm biến phụ (tab switch) ── -->
+                <!-- ── Biểu đồ tổng hợp cảm biến (multi-line, không cần tab) ── -->
                 <div class="panel-header" style="margin-top:1.75rem;">
                     <h2>📈 Xu Hướng Cảm Biến</h2>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <div class="chart-tabs" role="tablist">
-                            <button class="tab active" data-chart="temperature" role="tab" aria-selected="true"
-                                aria-controls="sensor-chart">Nhiệt độ</button>
-                            <button class="tab" data-chart="light" role="tab" aria-selected="false"
-                                aria-controls="sensor-chart">Ánh sáng</button>
-                            <button class="tab" data-chart="humidity" role="tab" aria-selected="false"
-                                aria-controls="sensor-chart">Độ ẩm KK</button>
-                            <button class="tab" data-chart="co2" role="tab" aria-selected="false"
-                                aria-controls="sensor-chart">CO₂</button>
-                        </div>
-                        <button id="reset-sensor-zoom" class="btn-reset-zoom hidden"
-                            onclick="import('./js/chartManager.js').then(m=>m.resetZoom('sensor'))"
-                            title="Về zoom gốc">↺ Reset</button>
-                    </div>
+                    <button id="reset-sensor-zoom" class="btn-reset-zoom hidden"
+                        onclick="import('./js/chartManager.js').then(m=>m.resetZoom('sensor'))"
+                        title="Về zoom gốc">↺ Reset</button>
                 </div>
+                <div class="chart-hint">Tất cả cảm biến hiển thị trên cùng biểu đồ · Nhấp legend để ẩn/hiện</div>
                 <div class="chart-container" id="chart-container">
                     <div id="chart-skeleton" class="skeleton-box chart-skeleton" aria-live="polite">
                         Đang tải dữ liệu lịch sử...
@@ -271,17 +293,18 @@
                     </div>
                 </div>
 
-                <!-- AI Section -->
-                <div class="ai-section">
-                    <h4>🤖 Phân Tích AI</h4>
-                    <div class="ai-status" id="ai-status" aria-live="polite">Đang phân tích...</div>
-                    <div id="ai-recommendation" class="ai-recommendation-text" aria-live="polite"></div>
-                    <a href="ai_camera.html" target="_blank" id="btn-ai-camera" style="display:inline-block; margin-top:10px; padding:8px 16px;
-                              background:linear-gradient(135deg,#00d4aa,#7c3aed);
-                              color:#fff; border-radius:8px; text-decoration:none;
-                              font-size:0.8rem; font-weight:600; transition:transform 0.15s;"
-                        onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
-                        📷 Mở Camera AI
+                <!-- AI Section VIP PRO -->
+                <div class="ai-section vip-pro-ai">
+                    <div class="ai-header">
+                        <h4><span class="ai-icon">✨</span> Trợ Lý Cảnh Báo AI</h4>
+                        <div class="ai-pulse"></div>
+                    </div>
+                    <div class="ai-content">
+                        <div class="ai-status" id="ai-status" aria-live="polite">Đang khởi tạo model...</div>
+                        <div id="ai-recommendation" class="ai-recommendation-text" aria-live="polite">Chưa có đánh giá môi trường.</div>
+                    </div>
+                    <a href="ai_camera.html" target="_blank" class="btn-ai-camera">
+                        <span class="btn-icon">📷</span> Mở Camera Phân Tích (Vision)
                     </a>
                 </div>
             </div>

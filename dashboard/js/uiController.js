@@ -3,7 +3,7 @@ import { escapeHtml } from './utils.js';
 import { initChart, refreshChart } from './chartManager.js';
 
 export function cacheDOMElements() {
-    ['moisture', 'temperature', 'light', 'humidity', 'co2'].forEach(type => {
+    ['moisture', 'temperature', 'light', 'humidity', 'co2', 'ec', 'ph'].forEach(type => {
         DOM.gauges[type]   = document.getElementById(`gauge-${type}`);
         DOM.values[type]   = document.getElementById(`val-${type}`);
         DOM.statuses[type] = document.getElementById(`status-${type}`);
@@ -15,9 +15,13 @@ export function cacheDOMElements() {
     DOM.aiDisplay        = document.getElementById('ai-status');
     DOM.alertList        = document.getElementById('alert-list');
     DOM.chartTabs        = document.querySelectorAll('.chart-tabs .tab');
+    DOM.lastUpdate       = document.getElementById('last-update');
 }
 
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52;
+
+// Luu gia tri truoc do de tinh trend
+const _prevValues = {};
 
 export function updateGauge(type, value) {
     const max    = CONFIG.gaugeMax[type];
@@ -36,6 +40,46 @@ export function updateGauge(type, value) {
         statusEl.textContent = getSensorStatus(type, value);
         statusEl.style.color = getSensorColor(type, value);
     }
+
+    // UX: Flash animation khi gia tri thay doi
+    const card = document.getElementById(`card-${type}`);
+    if (card && _prevValues[type] !== undefined && _prevValues[type] !== value) {
+        card.classList.remove('flash');
+        void card.offsetWidth; // Force reflow
+        card.classList.add('flash');
+    }
+
+    // UX: Trend indicator (↑↓→)
+    if (valEl && _prevValues[type] !== undefined) {
+        let trendEl = valEl.parentElement?.querySelector('.trend-indicator');
+        if (!trendEl) {
+            trendEl = document.createElement('span');
+            trendEl.className = 'trend-indicator';
+            valEl.parentElement?.appendChild(trendEl);
+        }
+        const diff = value - _prevValues[type];
+        if (Math.abs(diff) < 0.05) {
+            trendEl.textContent = '→';
+            trendEl.className = 'trend-indicator flat';
+        } else if (diff > 0) {
+            trendEl.textContent = '↑';
+            trendEl.className = 'trend-indicator up';
+        } else {
+            trendEl.textContent = '↓';
+            trendEl.className = 'trend-indicator down';
+        }
+    }
+
+    _prevValues[type] = value;
+
+    // UX: Cap nhat "last update" timestamp
+    if (DOM.lastUpdate) {
+        const now = new Date();
+        DOM.lastUpdate.textContent = `⏱ ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        DOM.lastUpdate.classList.add('fresh');
+        clearTimeout(DOM._lastUpdateTimer);
+        DOM._lastUpdateTimer = setTimeout(() => DOM.lastUpdate.classList.remove('fresh'), 3000);
+    }
 }
 
 function getSensorStatus(type, val) {
@@ -45,6 +89,8 @@ function getSensorStatus(type, val) {
         light:       () => val > 40000 ? 'Quá mạnh!' : val < 100 ? 'Tối' : 'Bình thường',
         humidity:    () => val < 30 ? 'Khô!' : val > 85 ? 'Ẩm!' : 'Bình thường',
         co2:         () => val > 1000 ? 'Cao!' : val < 300 ? 'Thấp' : 'Bình thường',
+        ec:          () => val > 3.5 ? 'Quá mặn!' : val < 0.5 ? 'Quá nhạt' : 'Bình thường',
+        ph:          () => val > 7.5 ? 'Kiềm!' : val < 5.5 ? 'Acid!' : 'Bình thường',
     };
     return (checks[type] || (() => ''))();
 }
@@ -59,6 +105,8 @@ function getSensorColor(type, val) {
         light:       () => val > 40000 ? danger : ok,
         humidity:    () => val < 30 ? warn : val > 85 ? warn : ok,
         co2:         () => val > 1000 ? danger : ok,
+        ec:          () => val > 3.5 ? danger : val < 0.5 ? warn : ok,
+        ph:          () => val > 7.5 ? warn : val < 5.5 ? warn : ok,
     };
     return (checks[type] || (() => ok))();
 }

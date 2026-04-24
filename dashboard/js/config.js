@@ -23,6 +23,8 @@ export const CONFIG = {
         light:       10000,
         humidity:    100,
         co2:         1200,
+        ec:          5,
+        ph:          14,
     },
     maxDataPoints: 50,
 };
@@ -41,6 +43,8 @@ export const state = {
         light:       [],
         humidity:    [],
         co2:         [],
+        ec:          [],
+        ph:          [],
         predictions: [],
     },
     alerts:      [],

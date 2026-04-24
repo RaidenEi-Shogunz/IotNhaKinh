@@ -118,6 +118,8 @@ function _applySnapshot(data) {
     if (s.light_intensity != null) { updateGauge('light',       s.light_intensity); addHistory('light',       s.light_intensity, data.sim_time); }
     if (s.humidity        != null) { updateGauge('humidity',    s.humidity);        addHistory('humidity',    s.humidity,        data.sim_time); }
     if (s.co2_level       != null) { updateGauge('co2',         s.co2_level);       addHistory('co2',         s.co2_level,       data.sim_time); }
+    if (s.ec_level        != null) { updateGauge('ec',          s.ec_level);        addHistory('ec',          s.ec_level,        data.sim_time); }
+    if (s.ph_level        != null) { updateGauge('ph',          s.ph_level);        addHistory('ph',          s.ph_level,        data.sim_time); }
 
     // Bom
     if (data.pump) {

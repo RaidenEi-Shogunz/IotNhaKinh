@@ -23,6 +23,8 @@
                                     --color-light:     #f59e0b;
                                     --color-humidity:  #06b6d4;
                                     --color-co2:       #a78bfa;
+                                    --color-ec:        #f97316;
+                                    --color-ph:        #14b8a6;
 
                                     /* Status */
                                     --color-success:  #22c55e;
@@ -49,6 +51,8 @@
                                     --grad-light:    linear-gradient(135deg, #f59e0b, #fbbf24);
                                     --grad-humidity: linear-gradient(135deg, #06b6d4, #22d3ee);
                                     --grad-co2:      linear-gradient(135deg, #8b5cf6, #a78bfa);
+                                    --grad-ec:       linear-gradient(135deg, #ea580c, #f97316);
+                                    --grad-ph:       linear-gradient(135deg, #0d9488, #14b8a6);
                                 }
 
                                 [data-theme="light"] {
@@ -268,6 +272,8 @@
                                 .sensor-card:nth-child(3)::before { background: var(--grad-light); }
                                 .sensor-card:nth-child(4)::before { background: var(--grad-humidity); }
                                 .sensor-card:nth-child(5)::before { background: var(--grad-co2); }
+                                .sensor-card:nth-child(6)::before { background: var(--grad-ec); }
+                                .sensor-card:nth-child(7)::before { background: var(--grad-ph); }
 
                                 .sensor-card:hover {
                                     transform: translateY(-6px);
@@ -545,22 +551,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.2);
 }
 
-/* AI Section */
-.ai-section {
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: var(--radius-sm);
-    background: rgba(139,92,246,0.06);
-    border: 1px solid rgba(139,92,246,0.15);
-}
-.ai-section h4 {
-    font-size: 0.8rem; font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--color-co2);
-}
-.ai-status {
-    font-size: 0.8rem; font-weight: 600;
-}
+/* AI VIP PRO Display */
+.vip-pro-ai { margin-top: 1.2rem; padding: 1.2rem; border-radius: 12px; background: linear-gradient(145deg, rgba(123, 91, 246, 0.08), rgba(0, 229, 184, 0.05)); border: 1px solid rgba(123, 91, 246, 0.3); box-shadow: 0 4px 20px rgba(123, 91, 246, 0.15); position: relative; overflow: hidden; }
+.vip-pro-ai::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #7b5bf6, #00e5b8, transparent); }
+.vip-pro-ai .ai-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+.vip-pro-ai h4 { font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #7b5bf6, #00e5b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.ai-pulse { width: 8px; height: 8px; border-radius: 50%; background: #00e5b8; box-shadow: 0 0 10px #00e5b8; animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 184, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 229, 184, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 229, 184, 0); } }
+.ai-content { background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.05); }
+.ai-status { font-size: 0.75rem; font-weight: 600; color: var(--accent); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.ai-recommendation-text { font-size: 0.82rem; line-height: 1.4; color: var(--text-color); }
+.btn-ai-camera { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px 16px; background: linear-gradient(135deg, #7b5bf6, #00e5b8); color: #fff; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: all 0.2s; box-shadow: 0 4px 15px rgba(123, 91, 246, 0.3); }
+.btn-ai-camera:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(123, 91, 246, 0.5); color: #fff; }
 
 /* PID display */
 .pid-section {
@@ -836,3 +838,41 @@ input[type="range"]::-webkit-slider-thumb:hover {
     color: var(--text-muted);
     border: 1px solid var(--border-color);
 }
+
+/* ================================================================
+   UX UPGRADE: Last-update badge in status bar
+   ================================================================ */
+.last-update {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s ease;
+}
+.last-update.fresh {
+    color: var(--color-success);
+}
+
+/* ================================================================
+   UX UPGRADE: Flash animation when values update
+   ================================================================ */
+@keyframes valueFlash {
+    0%   { background: rgba(34, 197, 94, 0.12); }
+    100% { background: transparent; }
+}
+.sensor-card.flash {
+    animation: valueFlash 0.6s ease-out;
+}
+
+/* ================================================================
+   UX UPGRADE: Trend indicators (↑ ↓ →)
+   ================================================================ */
+.trend-indicator {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 4px;
+    vertical-align: super;
+    transition: color 0.3s ease;
+}
+.trend-indicator.up   { color: var(--color-danger); }
+.trend-indicator.down { color: var(--color-info); }
+.trend-indicator.flat { color: var(--text-muted); }

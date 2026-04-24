@@ -143,11 +143,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     startSimClockFallback(10);
     _injectLocalBadge();
 
-    // Gan su kien
-    document.querySelectorAll('.chart-tabs .tab').forEach(tab => {
-        tab.addEventListener('click', () => switchChart(tab.dataset.chart));
-    });
-
     const btnPump   = document.getElementById('btn-pump');
     const btnAuto   = document.getElementById('btn-auto');
     const btnManual = document.getElementById('btn-manual');

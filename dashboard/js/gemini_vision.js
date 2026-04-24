@@ -1,23 +1,15 @@
 /**
  * ══════════════════════════════════════════════════════════════
- * GEMINI VISION — Stage 3: Phân tích sâu với Google Gemini 1.5
- * ══════════════════════════════════════════════════════════════
- * Gửi ảnh chụp tới backend proxy `/api/gemini` để phân tích
- * chuyên sâu. Gemini sẽ trả về JSON chứa khuyến nghị chăm sóc.
+ * GEMINI VISION — VIP Pro AI Agronomist
  * ══════════════════════════════════════════════════════════════
  */
 
 const GeminiVision = {
-    /**
-     * Chuyển đổi image/video/canvas thành chuỗi Base64 JPEG.
-     * Resize ảnh nhỏ lại (max width/height 800px) để giảm token / bandwidth.
-     */
     captureBase64(sourceElement) {
-        const MAX_DIM = 800;
+        const MAX_DIM = 1024;
         let w = sourceElement.width || sourceElement.videoWidth || sourceElement.naturalWidth || 640;
         let h = sourceElement.height || sourceElement.videoHeight || sourceElement.naturalHeight || 480;
 
-        // Nếu source là canvas (ví dụ: từ webcam)
         if (sourceElement instanceof HTMLCanvasElement) {
             w = sourceElement.width;
             h = sourceElement.height;
@@ -30,45 +22,53 @@ const GeminiVision = {
         const canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
-
         const ctx = canvas.getContext('2d');
         ctx.drawImage(sourceElement, 0, 0, targetW, targetH);
-
-        // Quality 0.8 để giảm dung lượng
-        return canvas.toDataURL('image/jpeg', 0.8);
+        return canvas.toDataURL('image/jpeg', 0.85);
     },
 
-    /**
-     * Gọi API phân tích ảnh qua proxy.
-     * @param {HTMLElement} sourceElement Ảnh hoặc canvas
-     * @param {string} apiKey Google Gemini API Key
-     * @param {string} tmClass Kết quả nhận diện từ Stage 2 (để truyền làm context)
-     */
-    async analyze(sourceElement, apiKey, tmClass = "") {
+    async analyze(sourceElement, apiKey, tmClass = "", sensorData = null) {
         if (!apiKey) {
-            throw new Error("Vui lòng cấu hình Gemini API Key trong phần Cấu Hình Hệ Thống.");
+            throw new Error("Vui lòng cấu hình Gemini API Key.");
         }
 
         const base64Image = this.captureBase64(sourceElement);
 
-        const prompt = `Bạn là một chuyên gia nông nghiệp thông minh (AI Agronomist) đang giám sát một nhà kính IoT.
-Đây là hình ảnh cây trồng vừa được camera chụp lại.
-Hệ thống AI nhận diện sơ bộ (Stage 2) đánh giá đây là: "${tmClass}".
+        let sensorContext = "Không có dữ liệu cảm biến thời gian thực.";
+        if (sensorData) {
+            sensorContext = `
+[Dữ liệu cảm biến môi trường hiện tại]
+- Nhiệt độ: ${sensorData.temperature || '--'} °C
+- Độ ẩm không khí: ${sensorData.humidity || '--'} %
+- Độ ẩm đất: ${sensorData.soil_moisture || '--'} %
+- Ánh sáng: ${sensorData.light_intensity || '--'} lux
+- Nồng độ CO2: ${sensorData.co2_level || '--'} ppm
+- Độ dẫn điện (EC): ${sensorData.ec_level || '--'} mS/cm
+- Độ pH: ${sensorData.ph_level || '--'}
+`;
+        }
 
-Vui lòng phân tích hình ảnh này thật kỹ và trả lời bằng JSON theo định dạng sau (không giải thích thêm, chỉ xuất JSON hợp lệ):
+        const prompt = `Bạn là một CHUYÊN GIA NÔNG NGHIỆP THÔNG MINH (VIP Pro AI Agronomist) đẳng cấp quốc tế, đang quản lý hệ thống Nhà Kính Sinh Thái Công Nghệ Cao.
+Nhiệm vụ của bạn là kết hợp DỮ LIỆU CẢM BIẾN THỜI GIAN THỰC và HÌNH ẢNH CAMERA để đưa ra báo cáo chẩn đoán chính xác nhất.
+
+${sensorContext}
+
+Hệ thống AI nhận diện sơ bộ qua hình ảnh đánh giá đây là: "${tmClass}".
+Dựa vào hình ảnh đính kèm và các thông số kỹ thuật bên trên (nếu có), hãy cung cấp báo cáo chuyên sâu. Phân tích sự tương quan giữa thông số môi trường và biểu hiện trên lá/thân cây.
+
+Trả về duy nhất dữ liệu JSON nguyên bản theo cấu trúc sau, không kèm Markdown hay giải thích:
 {
-    "status": "Tình trạng sức khỏe chung của cây (Tốt, Cảnh báo, Nguy hiểm)",
+    "status": "[Ngắn gọn] Tình trạng sức khỏe chung (Rất Tốt, Tốt, Cần Lưu Ý, Nguy Hiểm)",
     "observations": [
-        "Quan sát chi tiết 1 (ví dụ: màu sắc lá, đốm bệnh, độ héo)",
-        "Quan sát chi tiết 2"
+        "Phân tích thị giác 1 (Màu sắc, hình thái lá, tổn thương...)",
+        "Phân tích tương quan môi trường (Ví dụ: Độ ẩm đất thấp đang gây héo lá...)"
     ],
-    "disease_pest": "Phát hiện sâu bệnh cụ thể nào không? (Nếu không, ghi 'Không phát hiện')",
-    "water_advice": "Khuyến nghị về tưới tiêu (tăng, giảm, giữ nguyên) dựa trên quan sát",
-    "general_advice": "Lời khuyên tổng quát để cải thiện tình trạng cây"
+    "disease_pest": "[Chi tiết] Tên sâu bệnh/nấm nếu có. Đánh giá mức độ rủi ro.",
+    "water_advice": "[Hành động] Điều chỉnh chiến lược tưới tiêu và dinh dưỡng (EC/pH).",
+    "general_advice": "[Hành động] Điều chỉnh môi trường (Nhiệt, Sáng, CO2) để tối ưu quang hợp."
 }`;
 
         try {
-            // Strip the base64 prefix "data:image/jpeg;base64,"
             const base64Data = base64Image.split(',')[1];
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
@@ -79,12 +79,7 @@ Vui lòng phân tích hình ảnh này thật kỹ và trả lời bằng JSON t
                     contents: [{
                         parts: [
                             { text: prompt },
-                            {
-                                inlineData: {
-                                    mimeType: "image/jpeg",
-                                    data: base64Data
-                                }
-                            }
+                            { inlineData: { mimeType: "image/jpeg", data: base64Data } }
                         ]
                     }]
                 })
@@ -96,28 +91,12 @@ Vui lòng phân tích hình ảnh này thật kỹ và trả lời bằng JSON t
             }
 
             const data = await res.json();
-
-            // Lấy nội dung text từ response của Gemini
-            if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts.length > 0) {
-                const text = data.candidates[0].content.parts[0].text;
-                try {
-                    // Cố gắng parse JSON từ text (có thể API Gemini trả về dạng Markdown ```json ... ```)
-                    let jsonStr = text;
-                    if (jsonStr.includes("```json")) {
-                        jsonStr = jsonStr.split("```json")[1].split("```")[0].trim();
-                    } else if (jsonStr.includes("```")) {
-                        jsonStr = jsonStr.split("```")[1].split("```")[0].trim();
-                    }
-                    return JSON.parse(jsonStr);
-                } catch (e) {
-                    // Fallback nếu không parse được JSON
-                    return {
-                        error: "Gemini không trả về định dạng JSON hợp lệ.",
-                        raw_text: text
-                    };
-                }
+            if (data.candidates && data.candidates[0].content?.parts.length > 0) {
+                let text = data.candidates[0].content.parts[0].text;
+                let jsonStr = text.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+                return JSON.parse(jsonStr);
             } else {
-                throw new Error("Không nhận được nội dung phân tích từ Gemini.");
+                throw new Error("Không nhận được nội dung phân tích từ AI.");
             }
         } catch (err) {
             console.error("[GeminiVision] Error:", err);

@@ -1109,7 +1109,7 @@
                     <div class="brand-icon">🌿</div>
                     <div>
                         <div class="brand-name">AI Nhận Diện Cây Trồng</div>
-                        <div class="brand-sub">Nhà Kính Thông Minh · 3-Stage Pipeline</div>
+                        <div class="brand-sub">Nhà Kính Thông Minh · AI Vision Core</div>
                     </div>
                 </div>
             </div>
@@ -1207,7 +1207,7 @@
                                 value="https://teachablemachine.withgoogle.com/models/hFjVe1EyC/">
                         </div>
                         <div class="form-field full">
-                            <label>Gemini API Key (Dùng cho Stage 3)</label>
+                            <label>Gemini API Key (Tùy chọn cho AI Agronomist)</label>
                             <input type="password" id="gemini-key" placeholder="AIzaSy...">
                         </div>
                     </div>
@@ -1241,27 +1241,9 @@
 
             <!-- RIGHT -->
             <div class="right-col">
-                <!-- PIPELINE STAGES INDICATOR -->
+                <!-- AI VISION INSIGHTS -->
                 <div class="card" style="margin-bottom:1.2rem">
-                    <div class="card-title"><span>🔬</span> AI Pipeline 3 Tầng</div>
-                    <div class="pipeline-stages" id="pipeline-stages">
-                        <div class="pipe-stage waiting" id="pipe-s1">
-                            <div class="pipe-num">1</div>
-                            <span>Leaf Gate</span>
-                        </div>
-                        <div class="pipe-arrow" id="pipe-a1">→</div>
-                        <div class="pipe-stage waiting" id="pipe-s2">
-                            <div class="pipe-num">2</div>
-                            <span>Plant Classifier</span>
-                        </div>
-                        <div class="pipe-arrow" id="pipe-a2">→</div>
-                        <div class="pipe-stage waiting" id="pipe-s3">
-                            <div class="pipe-num">3</div>
-                            <span>Gemini AI</span>
-                        </div>
-                    </div>
-
-                    <!-- Gate Result Detail -->
+                    <div class="card-title"><span>🔬</span> Trạng Thái Cổng Quét Ảnh (Leaf Gate)</div>
                     <div class="gate-result" id="gate-result">
                         <div class="gate-header">
                             <div class="gate-icon" id="gate-icon">🔬</div>
@@ -1318,11 +1300,13 @@
                     </div>
                 </div>
 
-                <!-- STAGE 3: GEMINI AI PANEL -->
-                <div class="card" id="gemini-panel">
-                    <div class="card-title"><span style="color:#f59c1a">✨</span> Phân Tích Chuyên Sâu (Stage 3)</div>
-                    <div style="text-align: center; margin-bottom: 0.8rem;">
-                        <button class="btn btn-primary" id="btn-gemini" onclick="triggerGeminiAnalysis()" style="width: 100%" disabled>✨ Yêu cầu Gemini AI phân tích ảnh này</button>
+                <!-- VIP PRO AI AGRONOMIST PANEL -->
+                <div class="card" id="gemini-panel" style="border-color: rgba(123, 91, 246, 0.4); box-shadow: 0 0 30px rgba(123, 91, 246, 0.1);">
+                    <div class="card-title" style="background: linear-gradient(135deg, #00e5b8, #7b5bf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 0.9rem; margin-bottom: 1rem;"><span style="color:#7b5bf6; -webkit-text-fill-color: initial;">✨</span> Trợ Lý Chuyên Gia Nông Nghiệp (Vision AI)</div>
+                    <div style="text-align: center; margin-bottom: 1.2rem;">
+                        <button class="btn btn-primary" id="btn-gemini" onclick="triggerGeminiAnalysis()" style="width: 100%; background: linear-gradient(135deg, #7b5bf6, #00e5b8); font-size: 0.95rem; padding: 12px;" disabled>
+                            <span style="font-size: 1.2rem; margin-right: 8px;">🌌</span> Phân Tích Chuyên Sâu Tình Trạng Cây Trồng
+                        </button>
                     </div>
                     
                     <div class="gate-result" id="gemini-result" style="display:none; margin-bottom:0">
@@ -1356,7 +1340,7 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title"><span>💡</span> Khuyến Nghị Tự Động (Stage 2)</div>
+                    <div class="card-title"><span>💡</span> Phân Loại & Nhận Diện Nhanh</div>
                     <div class="rec-box" id="rec-box">Chờ AI phân tích hình ảnh cây trồng...</div>
                     <div class="sp-effect" id="sp-effect"><span>↕</span><span id="sp-text">Đang điều chỉnh
                             ngưỡng...</span></div>
@@ -1755,25 +1739,8 @@
         // ════════════════════════════════════════
         // PIPELINE UI HELPERS
         // ════════════════════════════════════════
-        function setPipeStage(stageId, state) {
-            // state: 'waiting' | 'running' | 'pass' | 'blocked' | 'skipped'
-            const el = $(stageId);
-            if (!el) return;
-            el.className = 'pipe-stage ' + state;
-        }
-
-        function setPipeArrow(arrowId, active) {
-            const el = $(arrowId);
-            if (!el) return;
-            el.classList.toggle('active', active);
-        }
-
         function resetPipeline() {
-            setPipeStage('pipe-s1', 'waiting');
-            setPipeStage('pipe-s2', 'waiting');
-            setPipeStage('pipe-s3', 'waiting');
-            setPipeArrow('pipe-a1', false);
-            setPipeArrow('pipe-a2', false);
+            // Nothing to reset
         }
 
         function updateGateUI(gateResult) {
@@ -1830,7 +1797,7 @@
         }
 
         // ════════════════════════════════════════
-        // CORE PREDICTION ENGINE — 3-Stage Pipeline
+        // CORE PREDICTION ENGINE — AI Vision Core
         // ════════════════════════════════════════
         let _lastGateCheckTime = 0;
         const _GATE_INTERVAL_CAM = 2000; // Gate mỗi 2s cho camera mode
@@ -1839,14 +1806,14 @@
         async function runPredict(source, mode, preComputed = null) {
             statsFrames++; updStats();
 
-            // ───── STAGE 1: Leaf Gate ─────
+            // ───── AI VISION: Leaf Gate ─────
             const now = Date.now();
             let gateResult;
 
             if (mode === 'camera') {
                 // Camera: chạy gate mỗi 2 giây, cache kết quả
                 if (_lastGatePass === null || (now - _lastGateCheckTime) >= _GATE_INTERVAL_CAM) {
-                    setPipeStage('pipe-s1', 'running');
+                    // Starting analysis
                     gateResult = await LeafGate.run(source, mode);
                     _lastGatePass = gateResult;
                     _lastGateCheckTime = now;
@@ -1856,18 +1823,14 @@
                 }
             } else {
                 // Image mode: luôn chạy gate
-                setPipeStage('pipe-s1', 'running');
+                // Running Leaf Gate
                 gateResult = await LeafGate.run(source, mode);
                 updateGateUI(gateResult);
             }
 
-            // Gate blocked → dừng pipeline
+            // Gate blocked -> stop
             if (!gateResult.pass) {
-                setPipeStage('pipe-s1', 'blocked');
-                setPipeStage('pipe-s2', 'skipped');
-                setPipeStage('pipe-s3', 'skipped');
-                setPipeArrow('pipe-a1', false);
-                setPipeArrow('pipe-a2', false);
+                // Gate blocked
 
                 const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
 
@@ -1889,35 +1852,32 @@
                 const bc = $('best-class');
                 bc.textContent = '🚫 Leaf Gate: Không phải cây trồng';
                 bc.style.color = 'var(--danger)';
-                $('pred-list').innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">Stage 1 đã chặn — Không phải ảnh lá cây / thực vật.<br>Hãy hướng camera vào cây trồng.</div>';
+                $('pred-list').innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem">AI Vision đã chặn — Không phải ảnh lá cây / thực vật.<br>Hãy hướng camera vào cây trồng.</div>';
                 updateRec('', 0, true);
                 if (mode === 'image' || offFrames >= OFF_FRAMES_CAM) addHist('Blocked by Gate', 0, true, mode);
                 return;
             }
 
             // Gate passed!
-            setPipeStage('pipe-s1', 'pass');
-            setPipeArrow('pipe-a1', true);
+            // Passed Leaf Gate
             offFrames = 0;
             const alertId = mode === 'camera' ? 'offtopic-alert' : 'offtopic-alert-img';
             showOTAlert(false, alertId, '', '');
 
-            // ───── STAGE 2: Plant Classifier (Teachable Machine) ─────
-            setPipeStage('pipe-s2', 'running');
+            // ───── AI VISION: Plant Classifier (Teachable Machine) ─────
+            // Running Plant Classifier
             const preds = preComputed || await model.predict(source);
 
             // Best class
             let bestCls = preds[0].className, bestConf = preds[0].probability;
             preds.forEach(p => { if (p.probability > bestConf) { bestConf = p.probability; bestCls = p.className; } });
 
-            // Entropy-based off-topic detection (Stage 2 level)
+            // Entropy-based off-topic detection (AI Vision level)
             const { isOT, reason, H, maxConf } = detectOffTopic(preds);
             updateEntropyBar(H);
 
             if (isOT) {
-                setPipeStage('pipe-s2', 'blocked');
-                setPipeStage('pipe-s3', 'skipped');
-                setPipeArrow('pipe-a2', false);
+                // Classifier blocked
 
                 statsOT++; updStats();
                 updateRing(maxConf, 'var(--danger)');
@@ -1930,12 +1890,8 @@
                 return;
             }
 
-            // Stage 2 passed!
-            setPipeStage('pipe-s2', 'pass');
-            setPipeArrow('pipe-a2', true);
-
-            // Stage 3 placeholder (Gemini AI - future)
-            setPipeStage('pipe-s3', 'waiting');
+            // Classifier passed
+            // Enable Gemini AI button
             $('btn-gemini').disabled = false;
             
             // Store current context for Gemini
@@ -1977,7 +1933,7 @@
 
             // Pre-load both models in background
             setTimeout(async () => {
-                // Stage 1: MobileNet
+                // AI Vision: MobileNet
                 try {
                     await LeafGate.loadMobileNet();
                     toast('✅ MobileNet (Leaf Gate) đã sẵn sàng!');
@@ -1985,7 +1941,7 @@
                     console.warn('[Init] MobileNet load failed:', e);
                 }
 
-                // Stage 2: Teachable Machine
+                // AI Vision: Teachable Machine
                 const ok = await loadModel();
                 if (ok) { buildPredBars(); toast('✅ Teachable Machine đã sẵn sàng!'); }
             }, 600);
@@ -2007,12 +1963,21 @@
             
             btn.disabled = true;
             btn.innerHTML = '<div class="spinner" style="display:inline-block; vertical-align:middle; width:14px; height:14px; margin-right:6px"></div> Đang phân tích...';
-            setPipeStage('pipe-s3', 'running');
+            // Requesting Gemini AI
             resPanel.style.display = 'none';
 
             try {
+                // Fetch latest sensor data
+                let sensorData = null;
+                try {
+                    const sensorRes = await fetch('http://localhost:8000/api/sensors');
+                    if (sensorRes.ok) sensorData = await sensorRes.json();
+                } catch(e) {
+                    console.warn("Could not fetch sensor data for AI context:", e);
+                }
+
                 const { source, tmClass } = window._currentGeminiContext;
-                const result = await GeminiVision.analyze(source, apiKey, tmClass);
+                const result = await GeminiVision.analyze(source, apiKey, tmClass, sensorData);
                 
                 if (result.error) {
                     throw new Error(result.error);
@@ -2039,12 +2004,12 @@
                 }
 
                 resPanel.style.display = 'block';
-                setPipeStage('pipe-s3', 'pass');
+                // Gemini AI Success
                 toast('✨ Hoàn tất phân tích chuyên sâu bởi Gemini!');
             } catch (err) {
                 console.error(err);
                 toast('❌ Lỗi Gemini AI: ' + err.message);
-                setPipeStage('pipe-s3', 'blocked');
+                // Gemini AI Blocked
             } finally {
                 btn.innerHTML = '✨ Yêu cầu Gemini AI phân tích ảnh này';
                 btn.disabled = false;

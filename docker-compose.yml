@@ -1,36 +1,14 @@
 version: '3.8'
 
 services:
-  simulator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: nhakinh-simulator
-    volumes:
-      - ./simulator:/app
-      - ./simulator/.env:/app/.env:ro
-    environment:
-      - PYTHONPATH=/app
-    restart: unless-stopped
-    networks:
-      - nhakinh-network
-
-  dashboard:
-    image: nginx:alpine
-    container_name: nhakinh-dashboard
+  smart-greenhouse:
+    build: .
+    container_name: smart-greenhouse
     ports:
-      - "8080:80"
+      - "8080:8080"
     volumes:
-      - ./dashboard:/usr/share/nginx/html:ro
-    depends_on:
-      - simulator
+      # Mount thư mục dữ liệu để SQLite không bị mất khi restart container
+      - ./simulator/dulieu_nhakinh.db:/app/simulator/dulieu_nhakinh.db
     restart: unless-stopped
-    networks:
-      - nhakinh-network
-
-networks:
-  nhakinh-network:
-    driver: bridge
-
-volumes:
-  nhakinh-data:
+    environment:
+      - PYTHONUNBUFFERED=1

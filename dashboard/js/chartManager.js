@@ -44,6 +44,8 @@ const C = {
     light:        '#f59e0b',
     humidity:     '#06b6d4',
     co2:          '#8b5cf6',
+    ec:           '#f97316',
+    ph:           '#14b8a6',
     pumpOnBg:     'rgba(16, 185, 129, 0.15)',
     pumpOnLine:   'rgba(16, 185, 129, 0.90)',
     pumpOffBg:    'rgba(239,  68,  68, 0.10)',
@@ -56,6 +58,8 @@ const CFGS = {
     light:       { label: 'Ánh sáng (lux)', color: C.light,       min: 0,   max: 12000 },
     humidity:    { label: 'Độ ẩm KK (%)',   color: C.humidity,    min: 0,   max: 100  },
     co2:         { label: 'CO₂ (ppm)',       color: C.co2,         min: 200, max: 1200 },
+    ec:          { label: 'EC (mS/cm)',      color: C.ec,          min: 0,   max: 5    },
+    ph:          { label: 'pH',              color: C.ph,          min: 0,   max: 14   },
 };
 
 // ─── Helper: màu theo theme hiện tại ─────────────────────────────────────────
@@ -198,8 +202,8 @@ export function initChart(forceRecreate = false) {
     // 1. Moisture — annotation + zoom
     moistureChart = _makeMoistureChart(cMoisture, tick, grid);
 
-    // 2. Sensor phụ — zoom
-    sensorChart = _makeSensorChart(cSensor, CFGS[state.activeChart ?? 'temperature'], tick, grid);
+    // 2. Sensor phụ — multi-line zoom
+    sensorChart = _makeSensorChart(cSensor, tick, grid);
 
     // 3. Overlay — dual Y-axis + annotation + zoom
     if (cOverlay) overlayChart = _makeOverlayChart(cOverlay, tick, grid);
@@ -300,41 +304,52 @@ function _makeMoistureChart(canvas, tick, grid) {
     });
 }
 
-// ─── Sensor chart (tab phụ) ───────────────────────────────────────────────────
-function _makeSensorChart(canvas, cfg, tick, grid) {
-    const plugins = { legend: { display: false } };
+// ─── Sensor chart (multi-line) ───────────────────────────────────────────────────
+function _makeSensorChart(canvas, tick, grid) {
+    const plugins = { 
+        legend: { display: true, position: 'top', labels: { color: tick, usePointStyle: true, boxWidth: 8 } }
+    };
     if (_zoomOk) plugins.zoom = _zoomOpts('reset-sensor-zoom');
+
+    // Create datasets for all sensors except moisture (which has its own chart)
+    const datasets = ['temperature', 'light', 'humidity', 'co2', 'ec', 'ph'].map((key, idx) => {
+        const cfg = CFGS[key];
+        return {
+            id:               key,
+            label:            cfg.label,
+            data:             [],
+            borderColor:      cfg.color,
+            backgroundColor:  'transparent',
+            borderWidth:      2,
+            tension:          0.4,
+            pointRadius:      0,
+            pointHoverRadius: 4,
+            yAxisID:          `y${idx}`, // Multi Y-axis
+        };
+    });
+
+    const scales = {
+        x: { ticks: { color: tick, maxTicksLimit: 10, font: { size: 10 } }, grid: { color: grid } }
+    };
+
+    // Configure Y-axes dynamically to allow separate scaling for each line
+    ['temperature', 'light', 'humidity', 'co2', 'ec', 'ph'].forEach((key, idx) => {
+        scales[`y${idx}`] = {
+            display: false, // Hide multiple Y axes to avoid clutter
+            min: CFGS[key].min,
+            max: CFGS[key].max
+        };
+    });
 
     return new Chart(canvas, {
         type: 'line',
-        data: {
-            labels:   [],
-            datasets: [{
-                label:            cfg.label,
-                data:             [],
-                borderColor:      cfg.color,
-                backgroundColor:  cfg.color + '22',
-                borderWidth:      2,
-                fill:             true,
-                tension:          0.4,
-                pointRadius:      2,
-                pointHoverRadius: 6,
-            }],
-        },
+        data: { labels: [], datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
             animation:  { duration: 250 },
             interaction:{ mode: 'index', intersect: false },
             plugins,
-            scales: {
-                x: { ticks: { color: tick, maxTicksLimit: 10, font: { size: 10 } }, grid: { color: grid } },
-                y: {
-                    min: cfg.min, max: cfg.max,
-                    title: { display: true, text: cfg.label, color: tick, font: { size: 11, weight: 'bold' } },
-                    ticks: { color: tick, font: { size: 10 } },
-                    grid:  { color: grid },
-                },
-            },
+            scales,
         },
     });
 }
@@ -449,18 +464,12 @@ export function refreshChart() {
     }
     moistureChart.update('none');
 
-    // 2. Sensor phụ (tab đang chọn)
-    const type = state.activeChart;
-    const cfg  = CFGS[type] ?? CFGS.temperature;
-    sensorChart.data.labels                       = ts;
-    sensorChart.data.datasets[0].data             = [...h[type]];
-    sensorChart.data.datasets[0].label            = cfg.label;
-    sensorChart.data.datasets[0].borderColor      = cfg.color;
-    sensorChart.data.datasets[0].backgroundColor  = cfg.color + '22';
-    sensorChart.options.scales.y.min              = cfg.min;
-    sensorChart.options.scales.y.max              = cfg.max;
-    if (sensorChart.options.scales.y.title)
-        sensorChart.options.scales.y.title.text   = cfg.label;
+    // 2. Sensor phụ (Multi-line)
+    sensorChart.data.labels = ts;
+    sensorChart.data.datasets.forEach(ds => {
+        const key = ds.id;
+        ds.data = [...(h[key] || [])];
+    });
     sensorChart.update('none');
 
     // 3. Overlay chart
@@ -508,9 +517,7 @@ export const debouncedRefreshChart = debounce(refreshChart, 100);
 
 // ─── switchChart ──────────────────────────────────────────────────────────────
 export function switchChart(type) {
-    state.activeChart = type;
-    DOM.chartTabs?.forEach(t => t.classList.toggle('active', t.dataset.chart === type));
-    refreshChart();
+    console.log("switchChart is deprecated, all sensors are now shown together.");
 }
 
 // ─── addPumpAnnotation (gọi từ mqttService / localApiService) ─────────────────

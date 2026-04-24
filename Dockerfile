@@ -1,26 +1,18 @@
-# Dockerfile cho simulator
-FROM python:3.11-slim
+FROM python:3.10-slim
 
-# Cài đặt system dependencies
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Tạo thư mục làm việc
 WORKDIR /app
 
-# Copy requirements và cài đặt Python packages
-COPY simulator/requirements.txt .
+# Copy requirement and install
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY simulator/ .
+# Copy simulator source code
+COPY simulator/ ./simulator/
+# Copy dashboard static files
+COPY dashboard/ ./dashboard/
 
-# Tạo thư mục cho database
-RUN mkdir -p /app/data
+# Expose API/Web port
+EXPOSE 8080
 
-# Expose port nếu cần (cho tương lai)
-# EXPOSE 8000
-
-# Command để chạy
-CMD ["python", "main.py"]
+# Command to run the system
+CMD ["python", "simulator/main.py"]
