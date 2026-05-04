@@ -208,5 +208,5 @@ ADAFRUIT_KEY=your_aio_key
 ```
 
 <div align="center">
-  <b>Phát triển bởi RaidenEi-Shogunz 💚 & Trí Tuệ Nhân Tạo 🤖</b>
+  <b>Phát triển bởi RaidenEi-Shogunz</b>
 </div>
