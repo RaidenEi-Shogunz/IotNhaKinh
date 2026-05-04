@@ -1,0 +1,24 @@
+{
+  "name": "Nhà Kính Thông Minh Pro Max",
+  "short_name": "SmartGreenhouse",
+  "description": "Dashboard quản lý và giám sát nhà kính thông minh thời gian thực",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b0f1a",
+  "theme_color": "#22c55e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzIyYzU1ZSI+PHBhdGggZD0iTTEyIDNMMCAxMnYxMGgyNFYxMkwxMiAzem0wIDIuNWw5IDcuNXY3LjVoLTE4di03LjVsOS03LjV6Ii8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzIyYzU1ZSI+PHBhdGggZD0iTTEyIDNMMCAxMnYxMGgyNFYxMkwxMiAzem0wIDIuNWw5IDcuNXY3LjVoLTE4di03LjVsOS03LjV6Ii8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

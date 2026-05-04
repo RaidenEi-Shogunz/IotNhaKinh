@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh — AI Task v5.0
 ====================================
-NANG CAP TOAN DIEN:
   [1] Off-topic detection dong bo voi frontend (confidence + entropy dual-check)
   [2] Confidence-weighted setpoint adjustment (thay vi +1/-1 cung nhac)
   [3] Trend analysis 10-diem voi EWMA (Exponential Weighted Moving Average)

@@ -33,7 +33,7 @@ class HealthCheckTask(BaseTask):
             
         try:
             client, addr = self.server_socket.accept()
-            client.settimeout(0.5) # FIX: Khong duoc block mai mai (vi du: Port Scanner ket noi nhung khong gui GET)
+            client.settimeout(0.5)
             try:
                 request = client.recv(1024)
                 if b"GET /health" in request or b"GET / " in request:

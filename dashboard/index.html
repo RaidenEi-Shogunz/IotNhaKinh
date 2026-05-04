@@ -11,9 +11,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0f1a">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzIyYzU1ZSI+PHBhdGggZD0iTTEyIDNMMCAxMnYxMGgyNFYxMkwxMiAzem0wIDIuNWw5IDcuNXY3LjVoLTE4di03LjVsOS03LjV6Ii8+PC9zdmc+">
 </head>
 
 <body>
+    <!-- Dynamic Island -->
+    <div id="dynamic-island" class="dynamic-island">
+        <div class="di-content">
+            <span id="di-icon" class="di-icon">🔔</span>
+            <div class="di-text-wrapper">
+                <span id="di-title" class="di-title">Thông báo</span>
+                <span id="di-msg" class="di-msg">Message</span>
+            </div>
+        </div>
+    </div>
 
     <!-- Login Overlay (Security Fix) -->
     <div id="login-overlay" class="connection-overlay hidden" role="dialog" aria-modal="true"
@@ -21,7 +34,6 @@
         <div class="connection-box login-box">
             <h2 id="login-title">🔐 Đăng nhập Adafruit IO</h2>
             <p class="login-desc">Nhập thông tin kết nối MQTT Broker. Thông tin chỉ lưu cục bộ trên trình duyệt.</p>
-            <!-- FIX Bug An 10: Canh bao ro rang ve rui ro plaintext trong WS tren may tinh lab -->
             <div
                 style="background-color: rgba(255, 68, 68, 0.1); border-left: 4px solid var(--color-alert); padding: 8px 12px; margin-bottom: 15px; border-radius: 4px;">
                 <p style="color: var(--color-alert); font-size: 0.85rem; margin: 0; text-align: left;">

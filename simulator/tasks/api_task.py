@@ -124,7 +124,7 @@ class APIServerTask(BaseTask):
         self._last_broadcast: float = 0.0
         self._broadcast_interval: float = getattr(config, "WS_BROADCAST_INTERVAL", 2.0)
         self._started: bool = False
-        self._event_loop: Optional[Any] = None  # FIX: Luu event loop cua uvicorn thread
+        self._event_loop: Optional[Any] = None
 
         if _FASTAPI_AVAILABLE:
             self._app = self._build_app()
@@ -142,7 +142,6 @@ class APIServerTask(BaseTask):
             version="4.0.0",
         )
 
-        # FIX: Capture event loop khi uvicorn khoi dong xong
         # Dung on_event("startup") de lay loop tu ben trong async context
         @app.on_event("startup")
         async def _capture_loop():
@@ -445,7 +444,6 @@ class APIServerTask(BaseTask):
                 mgr.remove(websocket)
                 logger.info(f"[WS] Client ngat ket noi. Con lai: {mgr.count()}")
 
-        # FIX: Phuc vu truc tiep giao dien Dashboard qua FastAPI de khong can dung Live Server
         # Luon de mount("/") o cuoi cung de khong che khuat cac route API khac!
         import os
         dashboard_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "dashboard")
@@ -538,7 +536,6 @@ class APIServerTask(BaseTask):
             return
         self._last_broadcast = now
 
-        # FIX: Dung event loop da capture tu startup event thay vi config.loop (khong ton tai)
         try:
             import asyncio
             loop = self._event_loop

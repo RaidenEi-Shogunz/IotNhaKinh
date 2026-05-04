@@ -40,32 +40,35 @@ class PredictiveTask(BaseTask):
             rows.reverse()
 
             n = len(rows)
-            sum_x = sum_y = sum_xy = sum_xx = 0.0
+            sum_x = sum_Y = sum_xY = sum_xx = 0.0
             
             # Lay t0 la diem bat dau
             t0 = rows[0]["timestamp"]
             
+            import math
             for r in rows:
                 # Chuyen ve thang phut mo phong (vi 1 giay thuc = config.TIME_SCALE phut mo phong)
                 x = ((r["timestamp"] - t0) * self.config.TIME_SCALE) / 60.0
                 y = r["soil_moisture"]
+                if y <= 0: y = 0.1 # Tranh log(0)
+                Y = math.log(y)
                 sum_x += x
-                sum_y += y
+                sum_Y += Y
                 sum_xx += x*x
-                sum_xy += x*y
+                sum_xY += x*Y
                 
-            # Linear Regression: Tinh he so goc m (slope)
+            # Log-Linear Regression (Exponential Decay): Y = m*x + b' => y = e^(m*x + b')
             denominator = (n * sum_xx - sum_x * sum_x)
             if denominator == 0:
                 return
             
-            m = (n * sum_xy - sum_x * sum_y) / denominator
-            b = (sum_y - m * sum_x) / n
+            m = (n * sum_xY - sum_x * sum_Y) / denominator
+            b_prime = (sum_Y - m * sum_x) / n
             
             current_moisture = self.greenhouse.get_sensors()["soil_moisture"]
             
             # Neu m >= 0 (dat dang uot len do tuoi hoac giu nguyen), khong the du doan can
-            if m >= -0.01:
+            if m >= -0.0001:
                 self.greenhouse.prediction_points = []
                 return
                 
@@ -73,8 +76,9 @@ class PredictiveTask(BaseTask):
             threshold = self.greenhouse.get_threshold()
             current_x = ((time.time() - t0) * self.config.TIME_SCALE) / 60.0
             
-            # y = mx + b => x_target = (threshold - b) / m
-            x_target = (threshold - b) / m
+            # y = e^(mx + b') => ln(y) = mx + b' => x_target = (ln(threshold) - b') / m
+            if threshold <= 0: threshold = 0.1
+            x_target = (math.log(threshold) - b_prime) / m
             sim_minutes_left = x_target - current_x
             
             predictions = []
@@ -85,7 +89,9 @@ class PredictiveTask(BaseTask):
                 step = sim_minutes_left / 4.0
                 for i in range(1, 5):
                     fut_sim_min = i * step
-                    fut_val = current_moisture + (m * fut_sim_min)
+                    # fut_val = e^(m * (current_x + fut_sim_min) + b_prime)
+                    fut_x = current_x + fut_sim_min
+                    fut_val = math.exp(m * fut_x + b_prime)
                     
                     if fut_val < threshold:
                         fut_val = threshold

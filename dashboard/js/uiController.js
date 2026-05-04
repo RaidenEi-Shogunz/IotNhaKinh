@@ -214,6 +214,33 @@ export function addAlert(severity, message, time) {
     state.alerts.unshift({ severity, message, time });
     if (state.alerts.length > 20) state.alerts.pop();
     renderAlerts();
+    showDynamicIsland(severity, message);
+}
+
+let _islandTimer = null;
+function showDynamicIsland(severity, message) {
+    const island = document.getElementById('dynamic-island');
+    if (!island) return;
+    
+    const titleEl = document.getElementById('di-title');
+    const msgEl = document.getElementById('di-msg');
+    const iconEl = document.getElementById('di-icon');
+    
+    if (titleEl) titleEl.textContent = severity;
+    if (msgEl) msgEl.textContent = message;
+    
+    let icon = '🔔';
+    if (severity === 'CRITICAL' || severity === 'DANGER') icon = '🚨';
+    else if (severity === 'WARNING') icon = '⚠️';
+    else if (severity === 'INFO') icon = 'ℹ️';
+    if (iconEl) iconEl.textContent = icon;
+    
+    island.className = `dynamic-island active ${severity}`;
+    
+    clearTimeout(_islandTimer);
+    _islandTimer = setTimeout(() => {
+        island.classList.remove('active');
+    }, 4000);
 }
 
 function renderAlerts() {
@@ -261,8 +288,7 @@ export let _lastMqttSyncMs = 0;
 
 /**
  * Dong bo dong ho mo phong tu MQTT.
- * NANG CAP: Fallback noi suy thoi gian khi mat ket noi (thay vi hien thi '--:--')
- */
+ *  */
 export function syncSimClock(simTimeStr, weatherCondition = '') {
     _lastMqttSyncMs       = Date.now();
     state.lastSimTime     = simTimeStr;
@@ -290,8 +316,7 @@ export function syncSimClock(simTimeStr, weatherCondition = '') {
 }
 
 /**
- * NANG CAP: Noi suy thoi gian mo phong giua cac lan MQTT sync.
- * Thay vi hien thi '--:--' sau 2 phut, tinh toan va tien len theo TIME_SCALE.
+ *  * Thay vi hien thi '--:--' sau 2 phut, tinh toan va tien len theo TIME_SCALE.
  * TIME_SCALE mac dinh = 10 (1 phut thuc = 10 phut mo phong).
  */
 export function startSimClockFallback(timeScale = 10) {

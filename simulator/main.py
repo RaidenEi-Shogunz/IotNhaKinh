@@ -37,6 +37,7 @@ from tasks.alert_task import AlertTask
 from tasks.persistence_task import PersistenceTask
 from tasks.api_task import APIServerTask
 from tasks.predict_task import PredictiveTask
+from tasks.weather_task import WeatherTask
 
 
 BANNER = r"""
@@ -70,7 +71,6 @@ def setup_logging():
     console.setFormatter(formatter)
     console.setLevel(logging.INFO)
 
-    # FIX: RotatingFileHandler thay vi FileHandler
     file_handler = RotatingFileHandler(
         "greenhouse.log",
         maxBytes=5 * 1024 * 1024,   # 5 MB moi file
@@ -134,7 +134,8 @@ def main():
     persistence_task = PersistenceTask(greenhouse, config)
     api_task         = APIServerTask(greenhouse, config, db_path=config.DB_PATH)
     predict_task     = PredictiveTask(greenhouse, config)
-    logger.info("[OK] 7 tasks da tao xong (HealthCheck -> APIServerTask)")
+    weather_task     = WeatherTask(greenhouse, config)
+    logger.info("[OK] Cac tasks da tao xong (HealthCheck -> APIServerTask, WeatherTask)")
 
     # 3. MQTT connect
     mqtt_task.connect()
@@ -144,7 +145,6 @@ def main():
     watchdog  = config.WATCHDOG_TIMEOUT if config.WATCHDOG_ENABLED else None
     scheduler = CooperativeScheduler(watchdog_timeout=watchdog)
 
-    # FIX: Chay thuan Cooperative Multitasking voi paho-mqtt
     scheduler.register_task(
         "MQTT_Loop", mqtt_task.network_loop,
         interval=0.1, priority=9,
@@ -156,7 +156,7 @@ def main():
     scheduler.register_task(
         "Bom",       pump_task.run,
         interval=config.TASK_INTERVAL_PUMP,         priority=7,
-        depends_on=["MoiTruong"] # FIX: Bom phu thuoc vao Moi truong de doc sensor truoc khi dieu khien
+        depends_on=["MoiTruong"]
     )
     scheduler.register_task(
         "CanhBao",   alert_task.run,
@@ -166,7 +166,6 @@ def main():
     scheduler.register_task(
         "MQTT",      mqtt_task.run,
         interval=config.TASK_INTERVAL_MQTT,         priority=5
-        # FIX: Khong phu thuoc vao task khac de dam bao telemetry/canh bao luon duoc gui di
     )
     scheduler.register_task(
         "AI",        ai_task.run,
@@ -184,6 +183,10 @@ def main():
         "API",       api_task.run,
         interval=config.WS_BROADCAST_INTERVAL,      priority=1,
     )
+    scheduler.register_task(
+        "ThoiTiet",  weather_task.run,
+        interval=15.0,  priority=4,
+    )
 
     def on_task_error(name, error):
         greenhouse.add_alert(
@@ -198,7 +201,6 @@ def main():
     logger.info("")
 
     # 5. Run with graceful shutdown
-    # FIX: Dung try/finally dam bao cleanup duoc goi ca khi co loi bat ngo
     try:
         scheduler.run(tick_interval=config.SCHEDULER_TICK)
     except KeyboardInterrupt:

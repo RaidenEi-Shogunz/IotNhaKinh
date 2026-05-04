@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Cooperative Scheduler
 =============================================
-NANG CAP v3.0:
   [1] Dependency enforcement that su: dependency bi PAUSED -> skip task phu thuoc
   [2] _sort_tasks chi rebuild khi can (O(n) check truoc)
   [3] DummyLock co canh bao ro rang neu duoc dung voi thread that
@@ -56,8 +55,7 @@ class CooperativeScheduler:
     Bo lap lich hop tac quan ly thuc thi cac task.
     Ho tro: priority, dependency enforcement, watchdog, health monitoring.
 
-    NANG CAP v3.0:
-      - Dependency enforcement that su: neu dependency PAUSED/STOPPED -> skip
+          - Dependency enforcement that su: neu dependency PAUSED/STOPPED -> skip
       - _sort_tasks chi chay lai khi danh sach thay doi
       - Error isolation ro rang
     """
@@ -94,8 +92,7 @@ class CooperativeScheduler:
         Sap xep task theo dependency graph (topological sort),
         sau do theo priority khi khong co rang buoc thu tu.
 
-        NANG CAP: Chi rebuild neu flag _sorted = False.
-        """
+                """
         if self._sorted:
             return
 
@@ -241,7 +238,6 @@ class CooperativeScheduler:
                 self._sort_tasks()
                 task_dict = {t.name: t for t in self._tasks}
 
-            # FIX Bug An 3: Phai copy list truoc khi duyet de chong bug thay doi kich thuoc (unregister_task) trong loop
             for task in list(self._tasks):
                 if task.state != "RUNNING":
                     continue
@@ -249,8 +245,7 @@ class CooperativeScheduler:
                 if (now - task.last_run) < task.interval:
                     continue
 
-                # NANG CAP: Kiem tra dependency enforcement that su
-                # Neu bat ky dependency nao bi PAUSED/STOPPED -> skip task nay
+                #                 # Neu bat ky dependency nao bi PAUSED/STOPPED -> skip task nay
                 dep_blocked = False
                 for dep_name in task.depends_on:
                     dep = task_dict.get(dep_name)
@@ -270,7 +265,6 @@ class CooperativeScheduler:
                             except Exception as e:
                                 logger.error(f"[LOI] Fallback cua '{task.name}' that bai: {e}")
                     
-                    # FIX Bug Nghiem Trong 1: Khong duoc set task.state = "PAUSED" de task co the tu dong resume!
                     logger.warning(
                         f"  [SKIP] Task '{task.name}' bo qua vong lap nay do dependency '{dep_name}' loi."
                     )

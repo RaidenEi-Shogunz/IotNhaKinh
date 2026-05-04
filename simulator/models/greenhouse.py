@@ -17,7 +17,6 @@ import threading
 
 logger = logging.getLogger("greenhouse")
 
-# FIX: Đã chuyển sang threading.Lock thay vì DummyLock
 # Vì Paho MQTT dùng loop_start() (background thread) để tránh chặn IO khi đứt mạng,
 # _on_message() sẽ được gọi từ thread phụ. Do đó phải dùng Lock thật để đảm bảo Thread-safe.
 
@@ -87,7 +86,6 @@ class TrangThaiThoiTiet:
         self.condition: str = "clear"
         self.cloud_cover: float = 0.0
         self.rain_intensity: float = 0.0
-        # FIX: luu absolute sim_minutes thay vi sim_hour-trong-ngay
         self.event_end_minutes: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -105,7 +103,6 @@ class Greenhouse:
     """
 
     def __init__(self, config: Any) -> None:
-        # FIX: Dung threading.Lock thay vi DummyLock de bao ve state khoi background thread
         self._lock            = threading.Lock()
         self._config          = config
         self._last_real_time  = time.time()
@@ -169,7 +166,6 @@ class Greenhouse:
             delta = now - self._last_real_time
             self._last_real_time = now
             
-            # FIX: Chống OS Sleep / Hibernate leap
             # Nếu thời gian thực trôi qua quá lớn (>10 giây giữa 2 tick), có khả năng hệ điều hành đã Sleep.
             # Ta kìm hãm delta để không làm thời gian mô phỏng nhảy vọt gây sai lệch vĩnh viễn hệ sinh thái.
             if delta > 10.0:
@@ -284,7 +280,6 @@ class Greenhouse:
         with self._lock:
             self.pump_duty_cycle = max(0.0, min(100.0, duty))
 
-    # FIX: Them method public de PumpTask cap nhat thong ke bom
     def add_pump_runtime(self, seconds: float, water_liters: float = 0.05) -> None:
         """Cap nhat thoi gian chay bom va luong nuoc tieu thu (thread-safe)."""
         with self._lock:
@@ -301,7 +296,6 @@ class Greenhouse:
         with self._lock:
             if mode in ("AUTO", "MANUAL"):
                 if mode == "AUTO" and self.mode != "AUTO":
-                    # FIX: Reset PID integral khi chuyen tu MANUAL sang AUTO tranh windup
                     self.pid_state.integral = 0.0
                 self.mode = mode
 

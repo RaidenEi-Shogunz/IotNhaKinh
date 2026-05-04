@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Task Giao Tiep MQTT
 ============================================
-NANG CAP v5.0 - Batch Publish:
   [1] Gom 6 sensor feeds + pump_status -> 1 JSON tren feed "sensor-data"
       Tiet kiem: 9 data points/cycle -> 2 data points/cycle
       Con lai ~28 points/phut cho alerts va events (tu 5.5 len 28)
@@ -10,7 +9,6 @@ NANG CAP v5.0 - Batch Publish:
   [4] Giu nguyen: Token Bucket, offline queue TTL, LWT, QoS 1 cho cmd feeds
   [5] Backward compat: FEED_PUMP_STATUS van dung cho LWT
 
-NANG CAP v3.0 (giu nguyen):
   [1] Thong nhat giao thuc: dung MQTTv311 (Adafruit IO khong ho tro v5)
   [2] offline_queue: ghi chu ro ve security (payload khong nhay cam)
   [3] Exponential backoff chinh xac tu paho (reconnect_delay_set da co)
@@ -55,7 +53,7 @@ class MQTTTask(BaseTask):
         # Queues
         self.offline_queue_file = "offline_queue.json"
         self.offline_queue: Deque[Tuple[str, str, float]] = deque(maxlen=1000)
-        self.publish_queue: Deque[Tuple[str, str]]        = deque(maxlen=1000) # FIX Bug An 14: Tang buffer cho rate limiter, tranh bi drop khi bi block
+        self.publish_queue: Deque[Tuple[str, str]]        = deque(maxlen=1000)
         self._load_offline_queue()
 
         # Deduplication state
@@ -68,7 +66,7 @@ class MQTTTask(BaseTask):
         self.client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=client_id,
-            protocol=mqtt.MQTTv311, # FIX: Adafruit IO khong the chay MQTTv5 on port 8883
+            protocol=mqtt.MQTTv311,
         )
         if config.MQTT_PORT == 8883:
             self.client.tls_set()
@@ -100,7 +98,6 @@ class MQTTTask(BaseTask):
         if not os.path.exists(self.offline_queue_file):
             return
         try:
-            # FIX Bug An 2: Doc file I/O ben ngoai Lock de khong block thread
             with open(self.offline_queue_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 
@@ -143,10 +140,8 @@ class MQTTTask(BaseTask):
         cfg = self.config
         try:
             logger.info(f"Dang ket noi {cfg.MQTT_HOST}:{cfg.MQTT_PORT} (MQTTv5) bang Background Thread...")
-            # FIX: Dung connect_async de khong bi block Cooperative Scheduler
             self.client.connect_async(cfg.MQTT_HOST, cfg.MQTT_PORT, cfg.MQTT_KEEPALIVE,
                                       clean_start=False)
-            # FIX: Dung loop_start() de chay background thread xu ly TCP/Socket rieng
             self.client.loop_start()
         except Exception as e:
             logger.error(f"Loi ket noi MQTT: {e}")
@@ -405,7 +400,7 @@ class MQTTTask(BaseTask):
 
     def shutdown(self) -> None:
         try:
-            self.client.loop_stop() # FIX: Dung background thread cua paho
+            self.client.loop_stop()
             self.client.disconnect()
             logger.info("[OK] Da ngat ket noi MQTT va dung background thread")
         except Exception:

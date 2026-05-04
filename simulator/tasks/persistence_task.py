@@ -128,7 +128,6 @@ class PersistenceTask(BaseTask):
 
             if count > self.config.DB_MAX_RECORDS:
                 delete_count = self.config.DB_CLEANUP_BATCH
-                # FIX Bug An 9: Dung subquery ORDER BY ASC LIMIT de dam bao
                 # xoa duoc dung so luong du cho ID bi non-contiguous.
                 conn.execute(f"""
                     DELETE FROM sensor_data

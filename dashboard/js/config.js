@@ -1,6 +1,6 @@
 export const CONFIG = {
     username: sessionStorage.getItem('aio_username') || '',
-    key:      '', // FIX: Khong luu API Key vao sessionStorage de chong XSS (chi luu in-memory)
+    key:      '',
     mqttUrl: 'wss://io.adafruit.com/mqtt',
     feeds: {
         sensorData:    'sensor-data',    // v5.0: batch feed (moisture+temp+light+humidity+co2+pump)

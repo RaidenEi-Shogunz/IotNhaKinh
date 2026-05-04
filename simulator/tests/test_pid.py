@@ -1,6 +1,5 @@
 """
-Test PID Controller - NANG CAP v3.0
-Kiem tra:
+Test PID Controller - Kiem tra:
   [1] Deadband (Stability Margin) - chong chattering
   [2] Derivative Low-Pass Filter - chong nhieu spike
   [3] dt chinh xac: KHONG nhan TIME_SCALE

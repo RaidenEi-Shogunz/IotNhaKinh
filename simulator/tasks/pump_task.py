@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Task Dieu Khien Bom
 ===========================================
-NANG CAP v3.0:
   [1] FIX BUG NGHIEM TRONG: dt = dt_real (khong nhan TIME_SCALE)
       PID integral/derivative tinh theo thoi gian THUC, khong phai mo phong
   [2] Low-pass filter cho Derivative term (chong nhieu spike)
@@ -63,7 +62,7 @@ class PumpTask(BaseTask):
                 self._pump_start_time = now
             elif now - self._pump_start_time > getattr(self.config, 'MAX_PUMP_DURATION_SEC', 300):
                 self.greenhouse.set_pump(False, trigger="SAFETY_GUARD")
-                self.greenhouse.set_mode("MANUAL") # FIX: Ép về MANUAL để chống vòng lặp tự bật lại
+                self.greenhouse.set_mode("MANUAL")
                 self.greenhouse.add_alert(
                     "PUMP_SAFETY",
                     f"Bom chay lien tuc > {self.config.MAX_PUMP_DURATION_SEC}s, tu ngat va khoa che do AUTO",
@@ -85,7 +84,6 @@ class PumpTask(BaseTask):
                     if (mode == "AUTO" and self.config.PID_ENABLED)
                     else 100.0)
             
-            # FIX Bug An 13: Dung dt_real thay vi TASK_INTERVAL_PUMP de tinh toan thoi gian chay & nuoc
             # Gia su bom tieu thu 1.0 lit / phut -> (1.0 / 60) * dt_real
             water_rate_per_sec = 1.0 / 60.0
             water_liters = water_rate_per_sec * dt_real * (duty / 100.0)
@@ -140,7 +138,6 @@ class PumpTask(BaseTask):
         integral  = max(-cfg.PID_INTEGRAL_MAX, min(cfg.PID_INTEGRAL_MAX, integral))
 
         # Derivative voi Low-Pass Filter (chong nhieu spike)
-        # FIX: Dùng raw_error để tính derivative thay vì error đã bị ép về 0 bởi deadband,
         # tránh hiện tượng "kick" (giật output) khi thoát khỏi/đi vào vùng deadband.
         raw_deriv = (raw_error - self.prev_error) / dt if dt > 0 else 0.0
         # LPF: deriv_filtered = alpha * raw + (1-alpha) * prev
@@ -165,7 +162,6 @@ class PumpTask(BaseTask):
             + ff_term
         )
         
-        # FIX Bug An 7: Chuan hoa Anti-windup bang phuong phap Back-calculation
         # Dam bao output ra khỏi vùng saturation lập tức khi error đảo chiều
         if output > cfg.PID_OUTPUT_MAX or output < cfg.PID_OUTPUT_MIN:
             clamped_output = max(cfg.PID_OUTPUT_MIN, min(cfg.PID_OUTPUT_MAX, output))

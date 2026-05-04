@@ -47,11 +47,12 @@
 | Tính năng | Mô tả |
 |-----------|-------|
 | 🔬 **7 Cảm biến Sinh thái** | Độ ẩm đất, Nhiệt độ, Ánh sáng, Độ ẩm KK, CO₂, **EC (Độ dẫn điện), pH**. |
-| 🌍 **Mô hình Khí hậu & Đất** | Giả lập chu kỳ ngày đêm, biến động thời tiết, tán cây quang hợp (FAO-56 WSI). |
-| 🎛️ **PID Controller** | Thuật toán PID điều khiển bơm nước để duy trì chính xác độ ẩm mục tiêu. |
+| 🌍 **Mô hình Khí hậu & Đất** | Giả lập chu kỳ ngày đêm, biến động thời tiết thực (OpenWeatherMap API), tán cây quang hợp. |
+| 🎛️ **PID Controller & ML** | Thuật toán PID điều khiển bơm nước, kết hợp **Machine Learning (Exponential Decay)** dự đoán thời gian cạn nước. |
 | 📡 **Đa giao thức Network** | Kết nối MQTT (Adafruit IO) song song cùng **FastAPI (REST + WebSockets)**. |
 | 🚀 **RTOS Scheduler** | Core vận hành theo kiến trúc Cooperative Multitasking với các Queue ưu tiên. |
-| 📊 **VIP Dashboard UI** | Bảng điều khiển siêu mượt (Vanilla JS), Dark Mode, Multi-line Chart.js. |
+| 📊 **VIP Dashboard UI** | Bảng điều khiển siêu mượt (Vanilla JS), Dark Mode, Multi-line Chart.js. Hỗ trợ **PWA (Progressive Web App)** cài đặt Native. |
+| 🔔 **Dynamic Island** | Hệ thống cảnh báo thông minh rút từ trên xuống mang phong cách hiện đại. |
 | 🤖 **AI Agronomist (Vision)** | Kết hợp TensorFlow.js và **Gemini Vision**, phân tích bệnh cây trồng từ Ảnh + Cảm biến thời gian thực. |
 | 🐳 **Dockerization** | Deploy nhanh chóng toàn bộ stack chỉ với 1 câu lệnh qua Docker Compose. |
 
@@ -207,5 +208,5 @@ ADAFRUIT_KEY=your_aio_key
 ```
 
 <div align="center">
-  <b>Phát triển bởi đội ngũ Đam Mê IoT 💚 & Trí Tuệ Nhân Tạo 🤖</b>
+  <b>Phát triển bởi RaidenEi-Shogunz 💚 & Trí Tuệ Nhân Tạo 🤖</b>
 </div>

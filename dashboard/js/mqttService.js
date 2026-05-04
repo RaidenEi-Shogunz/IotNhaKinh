@@ -8,7 +8,7 @@ import { addHistory, loadBulkHistory, addPumpAnnotation } from './chartManager.j
 import { escapeHtml } from './utils.js';
 
 let client = null;
-let historyLoaded = false; // FIX Bug An 11: Flag chong Race condition giua MQTT message va REST API history
+let historyLoaded = false;
 
 export function connectMQTT() {
     if (!CONFIG.username || !CONFIG.key) return false;
@@ -55,7 +55,6 @@ export function connectMQTT() {
         const payload = message.toString().trim();
         const feed    = topic.split('/feeds/')[1];
         
-        // FIX Bug An 11: Race condition - Bo qua message real-time cua sensor neu lich su chua load xong.
         // Ngan chan viec updateChart bi goi xen ngang, gay lap du lieu hoac sai thu tu thoi gian.
         if (!historyLoaded) {
             // v5.0: sensorData la batch feed chinh; cac feed sensor rieng giu lai de backward compat
@@ -99,8 +98,7 @@ function handleMessage(feed, payload) {
     const timestamp = new Date().toLocaleTimeString('vi-VN');
 
     if (feed === f.sensorData) {
-        // NANG CAP v5.0: Batch feed - giai ma 1 JSON thay vi 6 feeds rieng
-        try {
+        //         try {
             const d = JSON.parse(payload);
             if (typeof d !== 'object' || d === null) throw new Error('Invalid sensor-data payload');
             if (d.soil_moisture  != null) { const v = parseFloat(d.soil_moisture);  if (!isNaN(v)) { updateGauge('moisture',    v); addHistory('moisture',    v, timestamp); } }
@@ -322,7 +320,6 @@ async function fetchHistoricalDataParallel() {
         }
     }
     
-    // FIX Bug An 11: Mo khoa cho phep nhan du lieu real-time tu MQTT
     historyLoaded = true;
     console.log('[REST] Đã load xong data lịch sử song song an toàn. Mo khoa Real-time MQTT.');
 }

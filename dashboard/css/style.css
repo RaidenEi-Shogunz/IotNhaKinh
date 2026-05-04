@@ -699,6 +699,158 @@ input[type="range"]::-webkit-slider-thumb:hover {
    ============================================ */
 .hidden { display: none !important; }
 
+/* ============================================
+   DYNAMIC ISLAND
+   ============================================ */
+.dynamic-island {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    border-radius: 30px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 10000;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255,255,255,0.1);
+    min-width: 250px;
+    max-width: 90vw;
+}
+
+.dynamic-island.active {
+    top: 20px;
+    animation: islandPulse 2s infinite;
+}
+
+.di-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.di-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.di-text-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.di-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.di-msg {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Severity styles */
+.dynamic-island.CRITICAL, .dynamic-island.DANGER { border-color: rgba(239,68,68,0.5); box-shadow: 0 10px 30px rgba(239,68,68,0.3); }
+.dynamic-island.CRITICAL .di-title, .dynamic-island.DANGER .di-title { color: var(--color-danger); }
+
+.dynamic-island.WARNING { border-color: rgba(245,158,11,0.5); box-shadow: 0 10px 30px rgba(245,158,11,0.3); }
+.dynamic-island.WARNING .di-title { color: var(--color-warning); }
+
+.dynamic-island.INFO { border-color: rgba(59,130,246,0.5); box-shadow: 0 10px 30px rgba(59,130,246,0.3); }
+.dynamic-island.INFO .di-title { color: var(--color-info); }
+
+@keyframes islandPulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.02); }
+    100% { transform: translateX(-50%) scale(1); }
+}
+
+/* ============================================
+   DYNAMIC ISLAND
+   ============================================ */
+.dynamic-island {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    border-radius: 30px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    z-index: 10000;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255,255,255,0.1);
+    min-width: 200px;
+    max-width: 90vw;
+}
+
+.dynamic-island.active {
+    top: 20px;
+    animation: islandPulse 2s infinite;
+}
+
+.di-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.di-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.di-text-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.di-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.di-msg {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Severity styles */
+.dynamic-island.CRITICAL, .dynamic-island.DANGER { border-color: rgba(239,68,68,0.5); box-shadow: 0 10px 30px rgba(239,68,68,0.3); }
+.dynamic-island.CRITICAL .di-title, .dynamic-island.DANGER .di-title { color: var(--color-danger); }
+
+.dynamic-island.WARNING { border-color: rgba(245,158,11,0.5); box-shadow: 0 10px 30px rgba(245,158,11,0.3); }
+.dynamic-island.WARNING .di-title { color: var(--color-warning); }
+
+.dynamic-island.INFO { border-color: rgba(59,130,246,0.5); box-shadow: 0 10px 30px rgba(59,130,246,0.3); }
+.dynamic-island.INFO .di-title { color: var(--color-info); }
+
+@keyframes islandPulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.02); }
+    100% { transform: translateX(-50%) scale(1); }
+}
+
 /* Login Box (Removed inline styles) */
 .login-box h2 { margin-bottom: 1rem; text-align: center; }
 .login-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; text-align: left; }

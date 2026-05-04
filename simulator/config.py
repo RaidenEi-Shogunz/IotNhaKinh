@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Cau hinh he thong
 =========================================
-NANG CAP v3.0:
   [1] Them SENSOR_SPIKE_PROB va SENSOR_SPIKE_SIGMA (spike model linh hoat)
   [2] RATE_LIMIT_MIN_INTERVAL = 22s (9 feeds < 30/phut)
   [3] TASK_INTERVAL_MQTT = RATE_LIMIT_MIN_INTERVAL
@@ -44,8 +43,7 @@ FEED_AI_CMD         = "ai-command"
 FEED_WATERING_EVENT = "watering-event"
 FEED_ALERT          = "alert-status"
 
-# NANG CAP v5.0: Batch publish - gom tat ca sensor vao 1 JSON
-# Tiet kiem: 9 feeds/cycle -> 2 feeds/cycle (sensor-data + ai-status)
+# # Tiet kiem: 9 feeds/cycle -> 2 feeds/cycle (sensor-data + ai-status)
 # Con lai 28 points/phut cho alerts va events
 FEED_SENSOR_DATA    = "sensor-data"
 
@@ -54,8 +52,7 @@ def get_topic(feed_name):
 
 # ============================================================
 # Rate Limiter (Adafruit IO Free: 30 data points / phut)
-# NANG CAP v5.0: Batch publish
-#   Truoc: 9 feeds x (60/22s) = ~24.5/phut (chat, chi con 5.5 cho alerts)
+# #   Truoc: 9 feeds x (60/22s) = ~24.5/phut (chat, chi con 5.5 cho alerts)
 #   Sau:   2 feeds (sensor-data + ai-status) x (60/5s) = ~24/phut
 #          Con lai ~6 points/phut cho alerts va events
 #   Burst guard 1.5s van giu -> thuc te safe hon ly thuyet
@@ -300,7 +297,6 @@ def validate():
             f"RATE_LIMIT_MIN_INTERVAL ({RATE_LIMIT_MIN_INTERVAL})"
         )
         
-    # FIX Bug An (Config Validation): Kiem tra kieu du lieu nghiem ngat tai runtime (giong Pydantic)
     current_module = sys.modules[__name__]
     annotations = getattr(current_module, "__annotations__", {})
     for var_name, expected_type in annotations.items():

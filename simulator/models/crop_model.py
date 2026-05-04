@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Mo hinh Cay Trong (Crop Model)
 =====================================================
-NANG CAP v7.0 — FAO-56 Crop Coefficient (Kc) + Water Stress Index (WSI)
 
 Ly thuyet:
   [1] Kc (Crop Coefficient) — FAO Irrigation & Drainage Paper 56:

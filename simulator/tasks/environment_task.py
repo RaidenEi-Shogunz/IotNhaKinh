@@ -1,7 +1,6 @@
 """
 Nha Kinh Thong Minh - Task Mo Phong Moi Truong
 =================================================
-NANG CAP v7.0 - FAO-56 Crop Model Integration:
   [MỚI] Tích hợp mo hinh cay trong (CropModel) dua tren FAO-56:
     - Kc (Crop Coefficient) thay doi theo 4 giai doan sinh truong
     - WSI (Water Stress Index) lien ket do am dat voi thoat hoi nuoc
@@ -12,7 +11,6 @@ NANG CAP v7.0 - FAO-56 Crop Model Integration:
     - CO2 drop rate ban ngay phu thuoc Kc × Ks
       (cay truong thanh quang hop manh hon; stress -> giam quang hop)
 
-NANG CAP v6.0 (giu nguyen):
   [1] EC (Electrical Conductivity):
       - Dilution khi tuoi: EC giam (pha loang muoi)
       - Concentration ban ngay: EC tang cham (bay hoi nuoc)
@@ -26,7 +24,6 @@ NANG CAP v6.0 (giu nguyen):
       - Vi sinh vat ban dem: pH giam nhe
       - Phan bon ammonium: pH giam rat cham
 
-NANG CAP v3.0 (giu nguyen):
   [1] Magnus formula chinh xac cho Dew Point
   [2] Leaf Transpiration model (Penman-Monteith simplified)
   [3] Gaussian spike model linh hoat (sigma tu config)
@@ -104,7 +101,6 @@ class EnvironmentTask(BaseTask):
         dt_real = now - self._last_time
         self._last_time = now
         
-        # FIX: Neu dt_real vuot qua nguong (do OS Sleep), ta clamp va canh bao
         if dt_real > cfg.TASK_INTERVAL_ENVIRONMENT * 3:
             logger.warning(f"  [ENV] Phat hien OS Sleep hoac Block (dt_real={dt_real:.1f}s). Clamping de bao ve logic vat ly.")
             dt_real = cfg.TASK_INTERVAL_ENVIRONMENT * 3
@@ -162,13 +158,11 @@ class EnvironmentTask(BaseTask):
             end_minutes = gh.get_weather_event_end_minutes()
             if now_minutes >= end_minutes:
                 gh.set_weather("clear", 0, 0, 0)
-                # FIX: Them thoi gian cooldown sau khi ket thuc su kien thoi tiet (Mac dinh: 120 phut sim)
                 cooldown_minutes = getattr(cfg, 'WEATHER_COOLDOWN_MINUTES', 120.0)
                 self._weather_cooldown_end = now_minutes + cooldown_minutes
                 logger.info(f"  [THOI TIET] Troi quang dang (vao thoi gian nghi {cooldown_minutes} phut sim)")
             return
 
-        # FIX: Kiem tra thoi gian cooldown (neu co) truoc khi cho phep random su kien tiep
         if now_minutes < self._weather_cooldown_end:
             return
 
@@ -187,8 +181,7 @@ class EnvironmentTask(BaseTask):
     def _calc_temperature(self, sim_hour, is_day, weather, light, dt_factor):
         """
         Mo hinh nhiet do + Thermal Inertia dung dt_factor.
-        NANG CAP: alpha = THERMAL_INERTIA^dt_factor
-                  Dam bao vat ly dung ca khi task bi delay.
+                          Dam bao vat ly dung ca khi task bi delay.
         """
         cfg = self.config
 
@@ -211,7 +204,6 @@ class EnvironmentTask(BaseTask):
             raw_temp += random.gauss(0, self._spike_sigma) * random.choice([-1, 1])
 
         # Thermal inertia: alpha = INERTIA^dt_factor (dung vat ly)
-        # FIX: Doc truc tiep gh.temperature de khong bi mat precision do ham get_sensors lam tron (Quantization Error)
         prev  = self.greenhouse.temperature
         alpha = cfg.THERMAL_INERTIA ** dt_factor
         temp  = prev * alpha + raw_temp * (1.0 - alpha)
@@ -238,15 +230,13 @@ class EnvironmentTask(BaseTask):
     def _calc_moisture(self, is_day, weather, dt_factor, light, temperature, crop):
         """
         Tinh do am dat voi Crop Model FAO-56.
-        NANG CAP v7.0:
-          - Decay (bay hoi + thoat hoi nuoc) dieu chinh boi Kc × Ks
+                  - Decay (bay hoi + thoat hoi nuoc) dieu chinh boi Kc × Ks
             thay vi dung MOISTURE_DECAY_DAY co dinh.
           - Khi cay truong thanh (Kc cao): hut nuoc nhieu hon
           - Khi stress nuoc (WSI cao): stomata dong, giam thoat hoi nuoc
           - Ket qua: moisture, Kc, WSI phu thuoc nhau (feedback loop)
         """
         cfg      = self.config
-        # FIX: Doc truc tiep gh.soil_moisture de tranh Quantization Error tu get_sensors lam tron
         moisture = self.greenhouse.soil_moisture
         soil     = self._soil
 
@@ -294,8 +284,7 @@ class EnvironmentTask(BaseTask):
     def _calc_humidity_magnus(self, is_day, weather, temperature, soil_moisture):
         """
         Tinh do am khong khi bang Magnus formula.
-        NANG CAP:
-          - Dew Point model chinh xac (thay the phuong trinh tuyen tinh)
+                  - Dew Point model chinh xac (thay the phuong trinh tuyen tinh)
           - Transpiration effect: do am dat <-> do am KK
           - Spike model cho cam bien DHT
         """
@@ -329,14 +318,12 @@ class EnvironmentTask(BaseTask):
     def _calc_co2(self, sim_hour, is_day, light, temperature, dt_factor, weather, crop):
         """
         Mo hinh CO2 voi Crop Model FAO-56.
-        NANG CAP v7.0:
-          - CO2 drop ban ngay (quang hop) dieu chinh boi Kc × Ks:
+                  - CO2 drop ban ngay (quang hop) dieu chinh boi Kc × Ks:
             * Cay truong thanh (Kc cao): quang hop manh -> CO2 giam nhanh
             * Stress nuoc (WSI cao): stomata dong -> quang hop giam -> CO2 giam cham
           - Feedback: CO2 <-> moisture <-> transpiration phu thuoc nhau
         """
         cfg     = self.config
-        # FIX: Doc truc tiep gh.co2_level de tranh Quantization Error
         co2     = self.greenhouse.co2_level
 
         if is_day and light > 0:
@@ -347,7 +334,6 @@ class EnvironmentTask(BaseTask):
             co2 -= drop_rate
             co2  = max(250.0, co2)
         else:
-            # FIX: CO2 ban dem phu thuoc vao nhiet do moi truong on dinh, khong bi giam dot ngot do nhiet do hien tai (mua lam mat)
             base_t = (cfg.TEMP_DAY_BASE + cfg.TEMP_NIGHT_BASE) / 2.0
             rise_rate = (base_t / 20.0) * 4.0 * dt_factor
             

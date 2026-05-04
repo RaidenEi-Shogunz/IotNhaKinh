@@ -1,6 +1,5 @@
 """
-Test Cooperative Scheduler - NANG CAP v3.0
-Kiem tra:
+Test Cooperative Scheduler - Kiem tra:
   [1] Topological sort + Priority
   [2] Dependency enforcement that su (PAUSED dep -> skip task)
   [3] Dynamic priority change
@@ -41,8 +40,7 @@ class TestCooperativeScheduler(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_dependency_enforcement_paused(self):
         """
-        NANG CAP: Neu dependency bi PAUSED, task phu thuoc phai bi skip.
-        Day la test dependency enforcement that su (khong chi thu tu).
+                Day la test dependency enforcement that su (khong chi thu tu).
         """
         ran_b = []
 

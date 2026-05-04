@@ -1,6 +1,5 @@
 """
-Unit tests cho Greenhouse model - NANG CAP v3.0
-Kiem tra them:
+Unit tests cho Greenhouse model - Kiem tra them:
   - Magnus formula qua EnvironmentTask (_rh_from_dewpoint)
   - Transpiration effect (do am dat cao -> RH cao hon)
   - Gaussian spike model (spike_prob=0 cho ket qua on dinh)

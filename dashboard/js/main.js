@@ -143,6 +143,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     startSimClockFallback(10);
     _injectLocalBadge();
 
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('[PWA] Service Worker registered with scope:', reg.scope))
+            .catch(err => console.warn('[PWA] Service Worker registration failed:', err));
+    }
+
     const btnPump   = document.getElementById('btn-pump');
     const btnAuto   = document.getElementById('btn-auto');
     const btnManual = document.getElementById('btn-manual');
